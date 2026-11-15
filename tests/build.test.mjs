@@ -16,7 +16,7 @@ test('el HTML autónomo inicia, muestra mapas, guarda y restaura desde su interf
   const html=await readFile('ELDRITCH-404.html','utf8');
   const script=new Script(html.match(/<script>([\s\S]+)<\/script>/)[1]);
   const store=new Map(), elements=new Map();
-  const ctx=new Proxy({}, {get:(_,key)=>key==='createRadialGradient'?()=>({addColorStop(){}}):()=>{}});
+  const ctx=new Proxy({}, {get:(_,key)=>['createRadialGradient','createLinearGradient'].includes(key)?()=>({addColorStop(){}}):()=>{}});
   const element=id=>{
     if (!elements.has(id)) elements.set(id,{
       events:{}, clientWidth:1280,clientHeight:800,classList:{toggle(){}},

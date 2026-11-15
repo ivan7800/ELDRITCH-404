@@ -3,7 +3,7 @@ import { Renderer } from './render.mjs';
 import { Input } from './input.mjs';
 import { Sound } from './audio.mjs';
 import { load, save, fresh, validate, record, key, suspendedKey, suspend, restore } from './storage.mjs';
-import { defaultKeys, defaultPad, weapons, upgrades, enemies, step, investigators, stages, playModes, relics, bestiary, bossTells, expeditionTime } from './content.mjs';
+import { defaultKeys, defaultPad, weapons, upgrades, enemies, step, investigators, stages, playModes, relics, bestiary, bossTells, expeditionTime, harbourWeaponHints } from './content.mjs';
 import { archive, archiveCost, achievements, bonuses, buy, decisions, dispatches, endings, finalChoices, investigatorUnlocked, resolveStory, stageUnlocked } from './campaign.mjs';
 import { clamp } from './math.mjs';
 
@@ -81,7 +81,7 @@ function show(name) {
         btn('story-brief',storyLabel(),!pending&&!suspended)+
         btn('modes',tr('Modos alternativos','Other modes'))+btn('campaign',tr('Campaña','Campaign'))+
         btn('archive',tr('Archivo','Archive'))+btn('options',tr('Opciones','Settings'))+
-        '</div><p class="hero-footer">'+progress+' · v0.4.0</p></div></section>';
+        '</div><p class="hero-footer">'+progress+' · v0.5.0</p></div></section>';
       break;
     }
     case 'campaign':
@@ -143,8 +143,9 @@ function show(name) {
         '<p>'+tr('La expedición se detiene hasta que elijas.','The expedition waits for your choice.')+'</p><div class="cards">'+game.choices.map((id,index) => {
           const item = weapons[id] ?? upgrades[id], rank = game.arsenal[id] ?? game.passives[id] ?? 0;
           const hint = item.evolves ? tr('EVOLUCIÓN','EVOLUTION') : id === 'patch' ? tr('CURA','HEAL') : rank ? tr('Rango ','Rank ')+(rank+1) : tr('NUEVO','NEW');
+          const description = game.harbourStory ? harbourWeaponHints[id] ?? item.desc : item.desc;
           const value = item.stat ? ' · +'+Number(item.value.toFixed(3)) : '';
-          return '<button class="loot" data-do="choose" data-value="'+id+'" style="color:'+item.color+'">'+icon(item.glyph)+'<strong>'+loc(item.name)+value+'</strong><small>'+loc(item.desc)+'</small><span class="tag">'+(index+1)+' · '+hint+'</span></button>';
+          return '<button class="loot" data-do="choose" data-value="'+id+'" style="color:'+item.color+'">'+icon(item.glyph)+'<strong>'+loc(item.name)+value+'</strong><small>'+loc(description)+'</small><span class="tag">'+(index+1)+' · '+hint+'</span></button>';
         }).join('')+'</div>',true);
       break;
     case 'ritual': {
@@ -159,7 +160,11 @@ function show(name) {
       const flavor = {
         heal: tr('Quema el último cirio. Recuperas 42 de salud y 22 de cordura.','Burn the last candle. Restore 42 health and 22 sanity.'),
         blood: tr('Toca el filo. La mutación mejora daño, defensa o recogida según el investigador. Cuesta 48 de cordura y 2 de corrupción.','Touch the blade. Mutation improves damage, defence or pickup according to the investigator. Costs 48 sanity and 2 corruption.'),
-        gather: tr('Enciende la baliza. Obtén experiencia a cambio de 23 de cordura y 1 de corrupción.','Light the beacon. Gain experience at the cost of 23 sanity and 1 corruption.')
+        gather: game.floodedBeacon ?
+          tr('La baliza responde desde el agua. Ganas '+(29+game.level*2)+' de experiencia a cambio de 34 de cordura y 2 de corrupción.',
+            'The beacon answers from underwater. Gain '+(29+game.level*2)+' experience at the cost of 34 sanity and 2 corruption.') :
+          tr('Enciende la baliza. Ganas '+(15+game.level*2)+' de experiencia a cambio de 23 de cordura y 1 de corrupción.',
+            'Light the beacon. Gain '+(15+game.level*2)+' experience at the cost of 23 sanity and 1 corruption.')
       };
       overlay.innerHTML = panel(tr('Ritual','Ritual'),loc(titles[game.ritual]),'<p>'+flavor[game.ritual]+'</p><p>'+tr('La corrupción trae más enemigos y aumenta su salud. Con 55 de cordura o menos, la niebla oculta sombras adicionales.','Corruption brings more enemies and increases their health. At 55 sanity or below, more shades emerge in the mist.')+'</p>'+
         group(btn('ritual-no',tr('Marcharse','Leave'),true)+btn('ritual-yes',tr('Realizar ritual','Perform ritual'))));
@@ -174,6 +179,7 @@ function show(name) {
         retired?tr('Tu récord se ha registrado en el cuaderno.','Your record has been logged in the journal.'):
         tr('La última anotación de tu cuaderno se deshace en el agua. Otro investigador ocupará tu lugar cuando baje la marea.','The final line in your journal dissolves in the water. Another investigator will take your place at low tide.'))+'</p>'+
         statCards([[tr('Tiempo','Time'),timeLabel(game.time)],[tr('Bajas','Kills'),game.kills],[tr('Nivel','Level'),game.level]])+
+        '<p>'+tr('Armas utilizadas','Weapons used')+' · '+Object.entries(game.arsenal).map(([id,rank])=>loc(weapons[id].name)+' '+'I'.repeat(rank)).join(' · ')+'</p>'+
         group((profile.progress.pending?btn('chronicle',tr('Tomar la decisión','Make your decision'),true):btn('start',tr('Otra expedición','Another expedition'),true))+btn('home',tr('Volver al título','Return to title'))));
       break;
     }
@@ -717,7 +723,15 @@ function syncScreen() {
         loc(game.stage.feature)+' · '+tr('Suelo inestable','Unstable ground');
       notice(cue);
     }
-    if (event.type === 'boss-phase') notice(tr('Segunda fase','Second phase'));
+    if (event.type==='harbour-tide') notice(event.value==='tide' ?
+      tr('El agua alcanza la baliza. Iluminarla ahora tiene un precio mayor.','Water reaches the beacon. Lighting it now comes at a higher price.') :
+      tr('Pleamar · Hay luces encendidas bajo el agua.','High tide · Lights are burning underwater.'),4600);
+    if (event.type==='sanity-low') notice(event.value===28 ?
+      tr('Cordura crítica · Más daño y velocidad. Aumentan las sombras.','Critical sanity · More damage and speed. More shades emerge.') :
+      tr('La niebla se cierra. Empiezan a aparecer más sombras.','The fog closes in. More shades begin to emerge.'),4200);
+    if (event.type === 'boss-phase') notice(event.value==='boss' ?
+      tr('Segunda fase · La Sacristana apaga los faroles.','Second phase · The Sacristan extinguishes the lanterns.') :
+      tr('Segunda fase','Second phase'));
     if (event.type === 'endless-clear') notice(tr('Jefes vencidos · ','Bosses defeated · ')+game.clearCount);
     if (event.type === 'evolution') notice(loc(weapons[event.value].name));
   }

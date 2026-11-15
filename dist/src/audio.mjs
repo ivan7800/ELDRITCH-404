@@ -76,6 +76,7 @@ export class Sound {
       kill:[100,42,.11,.035,'triangle'], blast:[95,31,.38,.14,'sawtooth'], level:[370,690,.41,.12,'sine'],
       'ritual-accept':[173,97,.8,.08,'triangle'], discovery:[523,784,.48,.07,'triangle'], boss:[73,38,1,.2,'triangle'], 'boss-phase':[94,35,.85,.2,'sawtooth'], 'boss-tell':[168,232,.28,.075,'triangle'],
       won:[280,555,1.3,.15,'sine'], lost:[155,46,1.3,.13,'triangle'], click:[240,285,.12,.04,'triangle'],
+      'harbour-tide':[69,37,1.7,.16,'triangle'], 'sanity-low':[107,59,1.15,.13,'sawtooth'],
       evolution:[282,740,.85,.13,'sine'] };
     const arms = { salt:[125,60,.1,.09,'sawtooth'], tempest:[141,37,.14,.11,'sawtooth'], bell:[280,180,.41,.09,'sine'],
       choir:[385,240,.6,.09,'sine'], mine:[310,165,.12,.05,'triangle'], harpoon:[240,100,.15,.055,'triangle'],
@@ -85,6 +86,7 @@ export class Sound {
       ['triangle','sine','sawtooth'][Number(family[1])%3]] : undefined;
     const cue = type === 'fire' ? arms[variant]??fallback : cues[type];
     if (cue) this.tone(...cue,this.effects);
+    if (type==='boss-tell' && variant==='surge') this.tone(88,44,.46,.17,'triangle',this.effects,.12);
     if (type==='boss' || type==='boss-phase') {
       const motif = /[0-9]+$/.exec(variant ?? '');
       const root = roots[Number(motif?.[0] ?? 0)];

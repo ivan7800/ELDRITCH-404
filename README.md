@@ -1,4 +1,4 @@
-# ELDRITCH-404 · v0.4.0
+# ELDRITCH-404 · v0.5.0
 
 Juego de acción roguelite y horror cósmico. La expedición inaugural en **Innsmouth Olvidada** incluye ayudas contextuales y dura cinco minutos hasta la llegada de la Sacristana de la Marea. Sobrevive, reúne fragmentos y derrota al jefe para obtener la credencial de veterano.
 
@@ -20,6 +20,8 @@ En **Historia** hay diez capítulos conectados. Una victoria abre la decisión d
 | Pausa / volver | Esc | Menú o B |
 | Menús | Tab y Enter, flechas en botones | Cruceta/stick y A/B |
 | Elegir mejora | 1, 2 o 3, o Enter sobre la tarjeta | Cruceta/stick y A |
+
+**Innsmouth en Historia.** Los primeros fragmentos abren una elección temprana. La campana desplaza enemigos cercanos, el arpón busca filas y la escopeta añade perdigones con cada mejora. Puedes encender la baliza antes de que suba el agua o esperar para ganar más experiencia a cambio de más corrupción y menos cordura. Cuando la Sacristana apague los faroles, busca el hueco en la línea de sellos.
 
 **Registros perdidos.** En Historia, una señal ámbar marca un registro recuperable en cada mapa. Puedes leerlo en el Cuaderno de campo. Da 9 de experiencia y recupera hasta 18 de salud. La primera recuperación de cada capítulo añade suministros para la próxima expedición de Historia (+12 de salud inicial).
 

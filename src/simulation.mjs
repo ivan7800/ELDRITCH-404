@@ -49,13 +49,23 @@ export class Expedition {
   }
   get goal() { return 5 + (this.level - 1) * 7 + Math.floor((this.level - 1) ** 2 * .9); }
   emit(type, value) { this.events.push({ type, value }); }
-  phase() { return this.boss ? 'boss' : this.time >= this.duration*.61 ? 'deep' : this.time >= this.duration*.19 ? 'tide' : 'low'; }
+  tide(time = this.time) { return time >= this.duration*.61 ? 'deep' : time >= this.duration*.19 ? 'tide' : 'low'; }
+  phase() { return this.boss ? 'boss' : this.tide(); }
+  get harbourStory() { return this.stage.id===0 && this.config.mode==='story'; }
+  get floodedBeacon() { return this.harbourStory && this.tide()!=='low'; }
+  changeSanity(delta) {
+    const before = this.sanity;
+    this.sanity = clamp(before+delta,0,100);
+    if (before>28 && this.sanity<=28) this.emit('sanity-low',28);
+    else if (before>55 && this.sanity<=55) this.emit('sanity-low',55);
+  }
   mod(stat, family = '') { return this.modifiers[stat+family] ?? 0; }
 
   update(dt, input = {}, view = { width: 560, height: 344 }) {
     if (this.mode !== 'play') return;
     const previousTime = this.time;
     this.time += dt;
+    if (this.harbourStory && this.tide()!==this.tide(previousTime)) this.emit('harbour-tide',this.tide());
     if (this.config.guide) {
       for (const [at,cue] of [[.35,'move'],[4,'fragments'],[10,'dash'],[19,'ritual']]) {
         if (previousTime < at && this.time >= at) this.emit('guide',cue);
@@ -147,15 +157,15 @@ export class Expedition {
     }
     if (ritual === 'heal') {
       p.hp = Math.min(p.maxHp, p.hp + (this.character.id===2?60:42));
-      this.sanity = Math.min(100, this.sanity + 22);
+      this.changeSanity(22);
     }
     if (ritual === 'gather') {
-      this.xp += 15 + this.level * 2;
-      this.sanity = Math.max(0, this.sanity - 23);
-      this.corruption += 1;
+      this.xp += (this.floodedBeacon ? 29 : 15) + this.level * 2;
+      this.changeSanity(this.floodedBeacon ? -34 : -23);
+      this.corruption += this.floodedBeacon ? 2 : 1;
     }
     if (ritual === 'blood') {
-      this.sanity = Math.max(0, this.sanity - 48);
+      this.changeSanity(-48);
       this.corruption += 2;
       this.mutation = this.character.id===6 || this.character.id===9 ? 'flow' : this.character.id===2 || this.character.id===8 ? 'husk' : true;
     }
@@ -172,6 +182,7 @@ export class Expedition {
     if (this.time < this.nextWave || this.enemies.length >= 225) return;
     const waveTime = this.time * 300 / this.duration;
     const wave = this.waveTable.findLast(item => waveTime >= item.at) ?? this.waveTable[0];
+    const opening = this.harbourStory && this.nextWave<1;
     this.nextWave = this.time + wave.gap*(this.playMode==='nightmare'?.78:1);
     let count = this.boss ? 1 : waveTime < 24 ? 2 : waveTime < 94 ? 3 : 4;
     if (this.playMode==='nightmare' || this.clearCount>=2) count++;
@@ -181,7 +192,7 @@ export class Expedition {
       const dx = Math.cos(bearing);
       const dy = Math.sin(bearing);
       const p = this.player;
-      const radius = Math.min(view.width / 2 / Math.max(.01, Math.abs(dx)), view.height / 2 / Math.max(.01, Math.abs(dy))) + 20;
+      const radius = opening ? 133+i*19 : Math.min(view.width / 2 / Math.max(.01, Math.abs(dx)), view.height / 2 / Math.max(.01, Math.abs(dy))) + 20;
       let x = p.x + dx * radius;
       let y = p.y + dy * radius;
       if (x < 18 || x > arena.width - 18) x = p.x - dx * radius;
@@ -348,7 +359,7 @@ export class Expedition {
     }
     if (boss.action === 'move' && boss.timer <= 0) {
       boss.action = 'tell';
-      boss.timer = (phaseTwo ? .81 : 1.15)*(this.playMode==='nightmare'?.81:1);
+      boss.timer = (phaseTwo ? (this.harbourStory && boss.kind==='boss' ? .87 : .81) : 1.15)*(this.playMode==='nightmare'?.81:1);
       boss.sequence++;
       boss.tellSecond = phaseTwo;
       boss.attack = this.bossAttack(boss);
@@ -356,6 +367,21 @@ export class Expedition {
       boss.aim = angleTo(boss, this.player);
       if (pattern!=='tide') {
         this.castBoss(boss,boss.attack,phaseTwo);
+      }
+      else if (boss.attack === 'surge') {
+        boss.didSurge = true;
+        // Leave a traversable gap on a line crossing the player's starting position.
+        const p = this.player;
+        const dx = Math.abs(p.dx)>.65 ? 0 : 1;
+        const dy = 1-dx;
+        const gap = boss.sequence%2 ? -1 : 1;
+        const axis = dx ? p.x : p.y;
+        const span = dx ? arena.width : arena.height;
+        const center = clamp(axis,185,span-185);
+        for (let n=-3;n<=3;n++) {
+          if (n===gap) continue;
+          this.hazard('seal',dx?center+n*48:p.x,dy?center+n*48:p.y,0,0,boss.timer+Math.abs(n)*.055);
+        }
       }
       else if (boss.attack === 'seals') {
         const p = this.player;
@@ -368,7 +394,7 @@ export class Expedition {
       }
     }
     if (boss.action === 'tell' && boss.timer <= 0) {
-      if (pattern==='tide' && boss.sequence % 2 !== 0) {
+      if (pattern==='tide' && (boss.attack ?? (boss.sequence%2 ? 'ring' : 'seals'))==='ring') {
         const second = boss.tellSecond ?? phaseTwo;
         const count = second ? 18 : 11;
         for (let i = 0; i < count; i++) this.hazard('bolt', boss.x, boss.y, boss.aim + (i+.5) * Math.PI*2/count, second ? 151 : 117);
@@ -380,7 +406,10 @@ export class Expedition {
   }
   bossAttack(boss) {
     const pattern = enemies[boss.kind].pattern;
-    if (pattern === 'tide') return boss.sequence % 2 === 0 ? 'seals' : 'ring';
+    if (pattern === 'tide') {
+      if (this.harbourStory && boss.kind==='boss' && boss.second && boss.tellSecond && (!boss.didSurge || boss.sequence%3===0)) return 'surge';
+      return boss.sequence % 2 === 0 ? 'seals' : 'ring';
+    }
     const alternate = this.stage.id === 0 ? 'cross' : this.stage.pattern;
     return boss.kind === this.stage.optional && boss.sequence % 3 === 0 && alternate !== 'tide' ? alternate : pattern;
   }
@@ -423,7 +452,7 @@ export class Expedition {
     if (p.hurt || p.dash) return false;
     const resistance = Math.min(.62,(this.perks.guard??0)+this.mod('armor')+(this.mutation==='husk'?.16:0));
     p.hp = Math.max(0, p.hp - Math.round(amount * (this.difficulty === 'story' ? .66 : 1)*(1-resistance)));
-    if (this.expanded && this.character.id===11) this.sanity=Math.max(16,this.sanity-2);
+    if (this.expanded && this.character.id===11 && this.sanity>16) this.changeSanity(-Math.min(2,this.sanity-16));
     p.hurt = .57;
     this.emit('hurt');
     return true;
@@ -485,7 +514,7 @@ export class Expedition {
       if (this.cooldowns[key]) continue;
       const target = this.nearest(key === 'bell' ? 67 + rank*11 : key === 'choir' ? 143 : 315);
       if (!target && key !== 'mine') continue;
-      const angle = target ? angleTo(p, target) : Math.atan2(p.dy, p.dx);
+      const angle = key==='harpoon' && this.harbourStory ? this.harpoonAim(target) : target ? angleTo(p, target) : Math.atan2(p.dy, p.dx);
       this.cooldowns[key] = weapon.cooldown * (1 - .07 * (rank - 1));
       this.emit('fire', key);
       switch (key) {
@@ -501,11 +530,11 @@ export class Expedition {
           break;
         }
         case 'harpoon':
-          this.shot(p, angle, 500, .7, 30+rank*14, 3+rank*2, 4, weapon.color);
+          this.shot(p, angle, 500, .7, 30+rank*14, 3+rank*2, 4, weapon.color, this.harbourStory ? key : undefined);
           break;
         case 'bell':
         case 'choir':
-          this.effect('pulse', p.x, p.y, key === 'choir' ? 132 : 62+rank*11, weapon.color, .38, 17+rank*14, .34);
+          this.effect('pulse', p.x, p.y, key === 'choir' ? 132 : 62+rank*11, weapon.color, .38, 17+rank*14, key==='bell' && this.harbourStory ? .55 : .34);
           if (key === 'choir') this.effect('pulse', p.x, p.y, 172, '#aefff0', .43, 27, .24, .29);
           break;
         case 'lantern': {
@@ -581,8 +610,28 @@ export class Expedition {
       yield { x: this.player.x + Math.cos(angle)*r, y: this.player.y + Math.sin(angle)*r, angle };
     }
   }
-  shot(origin, angle, speed, life, damage, pierce, radius, color) {
-    this.shots.add({ x: origin.x, y: origin.y-2, vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed, life, damage, pierce, radius, color, hit: [] });
+  harpoonAim(nearest) {
+    const p = this.player;
+    const candidates = [];
+    for (const enemy of this.grid.near(p.x,p.y,315)) {
+      const distance = distance2(p,enemy);
+      if (enemy.hp>0 && distance<315**2) candidates.push({enemy,distance,angle:angleTo(p,enemy)});
+    }
+    candidates.sort((a,b)=>a.distance-b.distance);
+    let aim = angleTo(p,nearest), best = 0;
+    for (const lead of candidates.slice(0,10)) {
+      const dx = Math.cos(lead.angle), dy = Math.sin(lead.angle);
+      let score = 0;
+      for (const {enemy} of candidates) {
+        const x = enemy.x-p.x, y = enemy.y-p.y;
+        if (x*dx+y*dy>0 && Math.abs(x*dy-y*dx)<enemies[enemy.kind].radius+3) score++;
+      }
+      if (score>best) { best=score; aim=lead.angle; }
+    }
+    return aim;
+  }
+  shot(origin, angle, speed, life, damage, pierce, radius, color, weapon) {
+    this.shots.add({ x: origin.x, y: origin.y-2, vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed, life, damage, pierce, radius, color, weapon, hit: [] });
   }
   updateShots(dt) {
     for (let i = this.shots.live.length - 1; i >= 0; i--) {
@@ -592,7 +641,7 @@ export class Expedition {
       shot.life -= dt;
       for (const e of this.grid.near(shot.x, shot.y, 34)) {
         if (e.hp <= 0 || shot.hit.includes(e.id) || distance2(shot, e) >= (enemies[e.kind].radius + shot.radius) ** 2) continue;
-        this.strike(e, shot.damage, .15);
+        this.strike(e, shot.damage*(shot.weapon==='harpoon' && shot.hit.length ? 1.28 : 1), .15);
         shot.hit.push(e.id);
         shot.pierce--;
         if (!shot.pierce) break;
@@ -645,6 +694,11 @@ export class Expedition {
         for (const e of this.grid.near(effect.x, effect.y, radius+32)) {
           if (distance2(e, effect) > (radius+enemies[e.kind].radius)**2 || effect.hit.includes(e.id)) continue;
           this.strike(e, effect.damage, effect.push);
+          if (effect.push===.55 && this.harbourStory && e.hp>0 && !enemies[e.kind].boss) {
+            const outward = angleTo(effect,e);
+            e.x = clamp(e.x+Math.cos(outward)*18,14,arena.width-14);
+            e.y = clamp(e.y+Math.sin(outward)*18,14,arena.height-14);
+          }
           effect.hit.push(e.id);
         }
       }

@@ -5,13 +5,18 @@ export const defaultKeys = {up:'KeyW',down:'KeyS',left:'KeyA',right:'KeyD',dash:
 export const defaultPad = {dash:0,interact:2,pause:9,confirm:0,back:1};
 export const weapons = {
   salt: { name: ['Escopeta de sal', 'Salt Shotgun'], desc: ['Abre un abanico de perdigones hacia la amenaza más cercana.', 'Fans pellets toward the nearest threat.'], color: '#f8c289', glyph: 'salt', cooldown: 1.02 },
-  bell: { name: ['Campana funeraria', 'Funeral Bell'], desc: ['Pulso defensivo que golpea y empuja alrededor de ti.', 'A defensive pulse strikes and repels nearby enemies.'], color: '#8cead8', glyph: 'bell', cooldown: 2.1 },
+  bell: { name: ['Campana funeraria', 'Funeral Bell'], desc: ['Pulso circular que empuja a la horda y abre espacio a corta distancia.', 'A defensive pulse strikes and repels nearby enemies.'], color: '#8cead8', glyph: 'bell', cooldown: 2.1 },
   blade: { name: ['Cuchilla votiva', 'Votive Blade'], desc: ['Una cuchilla orbita a tu alrededor y corta al contacto.', 'An orbiting blade cuts enemies on contact.'], color: '#f8a5b5', glyph: 'blade', cooldown: 0 },
   lantern: { name: ['Farol de pabilo azul', 'Blue Wick Lantern'], desc: ['Prende fuego frío en la posición de enemigos cercanos.', 'Lights cold fire under nearby enemies.'], color: '#a3a7ff', glyph: 'lantern', cooldown: 3.45 },
   harpoon: { name: ['Arpón de bajamar', 'Ebb-Tide Harpoon'], desc: ['Atraviesa filas enteras. Úsalo para abrir un corredor.', 'Pierces entire rows. Use it to carve an escape route.'], color: '#d6eaa6', glyph: 'harpoon', cooldown: 1.68 },
   mine: { name: ['Nudo de pólvora', 'Powder Knot'], desc: ['Deja una carga detrás que detona al paso de una criatura.', 'Drops a charge that detonates when a creature approaches.'], color: '#eaa992', glyph: 'mine', cooldown: 2.48 },
   tempest: { name: ['Temporal de sal', 'Salt Tempest'], desc: ['Evolución. Dos ráfagas contrapuestas con perforación.', 'Evolution. Two opposing barrages of piercing shot.'], color: '#ffd8a4', glyph: 'salt', cooldown: .76, evolves: 'salt' },
   choir: { name: ['Coro de los ahogados', 'Choir of the Drowned'], desc: ['Evolución. Pulso expansivo y una segunda onda retardada.', 'Evolution. An expanding pulse and a delayed second wave.'], color: '#79ffe9', glyph: 'bell', cooldown: 1.6, evolves: 'bell' }
+};
+export const harbourWeaponHints = {
+  bell: ['Empuja la horda hacia fuera y abre espacio a corta distancia.', 'Pushes enemies outward to open space at close range.'],
+  harpoon: ['Busca filas de enemigos. Hace más daño a partir del segundo blanco.', 'Seeks lines of enemies. Deals more damage from the second target onward.'],
+  salt: ['Concentra los perdigones cerca del objetivo. Mejorar la escopeta añade otro perdigón.', 'Concentrates pellets at close range. Upgrading the shotgun adds another pellet.']
 };
 export const upgrades = {
   resin: { name: ['Resina negra', 'Black Resin'], desc: ['+12 % de daño por rango. Permite evolucionar la escopeta.', '+12% damage per rank. Enables the shotgun evolution.'], color: '#e2ac8c', glyph: 'resin', max: 3 },
@@ -29,6 +34,9 @@ export const enemies = {
   shade: { hp: 46, speed: 76, radius: 10, contact: 16, xp: 5, color: '#a0adec', name: ['Sombra del faro', 'Lighthouse Shade'] },
   boss: { hp: 3500, speed: 40, radius: 29, contact: 26, xp: 0, color: '#f18693', name: ['La Sacristana de la Marea', 'The Tide Sacristan'] }
 };
+// Lanterns and waterline use the half-resolution coordinates of the quay artwork.
+export const quayLights = [[317,306],[379,348],[474,344],[535,306],[244,238],[621,269],[165,365],[703,350]];
+export const lanternColors = ['#ffc47d','#c4d18c','#fa9676','#78cddc','#d29af4','#bdc98b','#b1b6f9','#e4aa74','#f1c68c','#e2a8ed'];
 export const sites = [
   { x: 864, y: 576, art: 'well', label: ['Plaza del aljibe', 'Cistern Square'] },
   { x: 459, y: 346, art: 'chapel', ritual: 'heal', label: ['Capilla sin nombre', 'Nameless Chapel'] },
@@ -70,6 +78,7 @@ const chapters = [
   [['Corazón del Caos','Heart of Chaos'],['El paso sólo permanecerá abierto mientras alguien recuerde sus dos orillas. Escoge quién conservará esa memoria.','The passage stays open only while someone remembers both shores. Choose who keeps that memory.'],['Vínculo','Link'],'#944a81',[1,1],['Corazón sin Dueño','Masterless Heart'],['Testigo Anterior','First Witness']]
 ];
 export const bossTells = {
+  surge:['Resaca · busca el hueco','Undertow · find the gap'],
   ring:['Oleada circular','Circular surge'], seals:['Sellos de bajamar','Ebb-tide seals'],
   fan:['Abanico frontal','Frontal fan'], cross:['Sellos en cruz','Cross seals'], pursuit:['Sellos de persecución','Pursuit seals'],
   shell:['Anillo de proyectiles','Ring of projectiles'], roots:['Cerco de raíces','Ring of roots'], clock:['Salva escalonada','Staggered volley'],

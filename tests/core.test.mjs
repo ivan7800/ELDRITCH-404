@@ -193,3 +193,67 @@ test('lost dispatch rewards once and survives a suspended run and profile valida
   Object.assign(challenge.player,{x:site.x,y:site.y});
   assert.equal(challenge.nearestSite(),undefined);
 });
+
+test('Innsmouth offers an early loadout choice and a costlier beacon at rising tide', () => {
+  const opening = new Expedition({mode:'story',seed:404});
+  while (opening.mode==='play' && opening.time<8) opening.update(step);
+  assert.equal(opening.mode,'level');
+  assert.deepEqual(opening.choices,['bell','harpoon','salt']);
+
+  const beacon = stages[0].sites.find(site=>site.ritual==='gather');
+  for (const flooded of [false,true]) {
+    const game = new Expedition({mode:'story',seed:404});
+    Object.assign(game.player,{x:beacon.x,y:beacon.y});
+    game.sanity = 80;
+    game.time = flooded ? game.duration*.2 : 2;
+    game.openRitual();
+    game.resolveRitual(true);
+    assert.equal(game.xp,flooded?31:17);
+    assert.equal(game.sanity,flooded?46:57);
+    assert.equal(game.corruption,flooded?2:1);
+    assert.equal(game.events.some(e=>e.type==='sanity-low'),flooded);
+    game.openRitual();
+    assert.equal(game.mode,'play');
+  }
+});
+
+test('the Sacristan telegraphs the undertow gap and restores it with a suspended expedition', () => {
+  const game = new Expedition({mode:'story',seed:404});
+  game.boss = game.spawn('boss',game.player.x+150,game.player.y);
+  Object.assign(game.boss,{hp:game.boss.maxHp*.49,sequence:0,timer:0});
+  game.bossPattern(game.boss,150);
+  game.boss.timer = 0;
+  game.bossPattern(game.boss,150);
+  assert.equal(game.boss.attack,'surge');
+  assert.equal(game.hazards.live.length,6);
+  const gap = game.player.y-48;
+  assert.ok(game.hazards.live.every(h=>h.x===game.player.x && Math.abs(h.y-gap)>=48 && h.delay>=.8));
+  const resumed = restore(JSON.parse(JSON.stringify(suspend(game))),Expedition);
+  assert.equal(resumed.boss.attack,'surge');
+  resumed.player.y = gap;
+  const hp = resumed.player.hp;
+  for (let i=0;i<84;i++) resumed.updateHazards(step);
+  assert.equal(resumed.player.hp,hp);
+  assert.equal(resumed.hazards.live.length,0);
+});
+
+test('Innsmouth harpoon prefers a line of enemies and the bell makes physical space', () => {
+  const game = new Expedition({mode:'story',seed:404});
+  const {x,y} = game.player;
+  const nearest = game.spawn('brute',x,y+34);
+  const line = [65,112,158].map(offset=>game.spawn('brute',x+offset,y));
+  game.grid.reset(game.enemies);
+  game.arsenal = {harpoon:1};
+  game.fireWeapons(step);
+  assert.equal(game.shots.live.length,1);
+  assert.ok(game.shots.live[0].vx>490);
+  for (let i=0;i<24;i++) game.updateShots(step);
+  assert.ok(line.every(enemy=>enemy.hp<enemy.maxHp));
+  assert.equal(nearest.hp,nearest.maxHp);
+
+  game.arsenal = {bell:1};
+  game.fireWeapons(step);
+  for (let i=0;i<28;i++) game.updateEffects(step);
+  assert.ok(nearest.y>=y+51);
+  assert.ok(nearest.stun>0);
+});

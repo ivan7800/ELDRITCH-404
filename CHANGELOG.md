@@ -1,5 +1,12 @@
 # Cambios
 
+## 0.5.0 · La resaca de Innsmouth
+
+- Nuevos muelles, tejados y embarcaderos en Innsmouth. La pleamar cubre parte de la plaza, cambia los reflejos y deja entrever luces sumergidas con cordura baja.
+- Iluminación por zonas y niebla para los diez escenarios. Los avisos de combate se dibujan sobre el ambiente y conservan sus formas en alto contraste y efectos reducidos.
+- En Historia, los primeros ahogados de Innsmouth llegan antes. La campana abre espacio alrededor del investigador y el arpón busca filas de enemigos. La baliza inundada ofrece más experiencia a cambio de mayor corrupción y pérdida de cordura.
+- La Sacristana apaga los faroles al entrar en segunda fase y anuncia una resaca con un hueco transitable. El informe final muestra las armas de la partida.
+
 ## 0.4.0 · El registro de la bajamar
 
 - Nueva portada cinematográfica original, optimizada y disponible también en el HTML portátil. Niebla animada con ajuste para reducir movimiento.

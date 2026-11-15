@@ -1,4 +1,4 @@
-import { arena, enemies, sites } from './content.mjs';
+import { arena, enemies, lanternColors, quayLights, sites } from './content.mjs';
 import { clamp } from './math.mjs';
 const rows = ['player','drowned','skitter','brute','seer','charger','shade','boss'];
 const TAU = Math.PI * 2;
@@ -38,12 +38,13 @@ export class Renderer {
     c.drawImage(backdrop, cx, cy, w, h, 0, 0, w, h);
     c.save();
     c.translate(-cx, -cy);
+    this.lightScene(c,game,cam,reduced,contrast);
     if (!reduced) this.ambience(c,game,cam);
 
     for (const effect of game.effects.live) {
       if (this.visible(effect,cam,2*effect.radius+40)) this.drawEffect(c,effect,game.time,reduced,false);
     }
-    const warning = contrast ? '#fff4b3' : '#ffb3a7';
+    const warning = contrast ? '#fff4b3' : '#ffcab2';
     for (const hazard of game.hazards.live) {
       if (!this.visible(hazard,cam,hazard.kind==='seal'?75:115)) continue;
       const x = hazard.x/2;
@@ -145,6 +146,92 @@ export class Renderer {
     this.compass(c,game,cam);
     return cam;
   }
+  lightScene(c,game,cam,reduced,contrast) {
+    const stage = game.stage.id;
+    const time = game.time;
+    const x0 = Math.round(cam.x/2), y0 = Math.round(cam.y/2);
+    const player = game.player, px = player.x/2, py = player.y/2;
+    const blackout = game.boss?.kind==='boss' && game.boss.second;
+    const risen = clamp((time/game.duration-.19)/.42,0,1);
+    if (stage===0) this.drawWater(c,x0,y0,risen,time,reduced);
+    c.fillStyle = blackout ? '#0c142b69' : '#04101c30';
+    c.fillRect(x0,y0,this.canvas.width,this.canvas.height);
+    if (reduced || contrast) return;
+
+    const color = lanternColors[stage];
+    this.glow(c,px,py+8,72,blackout?'#9fa3fa':'#e5bf81',blackout?.32:.28);
+    const lights = stage===0 ? quayLights : game.stage.sites.map(site=>[site.x/2,site.y/2+8]);
+    for (const [i,[x,y]] of lights.entries()) {
+      if (!this.visible({x:x*2,y:y*2},cam,145)) continue;
+      const since = time-(game.boss?.phaseAt ?? -3);
+      const light = blackout ? 1-clamp((since-i*.21)/.75,0,1) : 1;
+      this.glow(c,x,y,62,color,light*(.35+Math.sin(time*1.22+i)*.045));
+      if (stage===0) {
+        c.fillStyle = light>.2 ? '#edab6c' : '#111e28';
+        c.fillRect(x-2,y-20,5,4);
+        c.fillStyle = '#e9b680';
+        c.globalAlpha = light*(.32+risen*.22);
+        for (let strip=0;strip<5;strip++) {
+          const width = 5+strip*3;
+          c.fillRect(x-width/2+Math.sin(time+strip)*2,y+11+strip*3,width,1);
+        }
+        c.globalAlpha = 1;
+      }
+    }
+    const veil = stage===0 ? .13+risen*.15 : .15;
+    for (let i=0;i<3;i++) {
+      const y = y0+this.canvas.height*(.29+i*.22)+Math.sin(time*.3+i*3)*16;
+      const gradient = c.createLinearGradient(0,y-24,0,y+24);
+      gradient.addColorStop(0,'#bcdfdf00');
+      gradient.addColorStop(.53,game.sanity<=55?'#b9a3d1':'#9abfc2');
+      gradient.addColorStop(1,'#bcdfdf00');
+      c.fillStyle = gradient;
+      c.globalAlpha = veil*(i===1?.75:.5);
+      c.fillRect(x0,y-24,this.canvas.width,48);
+    }
+    c.globalAlpha = 1;
+    if (game.sanity<=55 && stage===0) {
+      // Reversed windows are painted into the flood rather than presented as targets.
+      for (const [i,[x,y]] of quayLights.entries()) {
+        if (!this.visible({x:x*2,y:y*2},cam,120)) continue;
+        const dy = Math.max(410,y+46);
+        c.fillStyle = '#bc7f9a';
+        c.globalAlpha = (.45+.25*Math.sin(time*.75+i))*risen;
+        c.fillRect(x-5,dy,10,2); c.fillRect(x-4,dy+3,3,6); c.fillRect(x+1,dy+3,3,6);
+      }
+      c.globalAlpha = 1;
+    }
+  }
+  drawWater(c,x0,y0,rise,time,reduced) {
+    const height = this.canvas.height;
+    const width = this.canvas.width;
+    if (y0+height<350) return;
+    const surface = 420-rise*65;
+    const crest = x=>Math.round(surface+Math.sin(x*.018)*12+Math.sin(x*.048)*(reduced?0:3));
+    c.save();
+    c.beginPath();
+    for (const [left,right] of [[0,407],[471,864]]) {
+      const a = Math.max(left,x0), b = Math.min(right,x0+width);
+      if (b<=a) continue;
+      c.moveTo(a,crest(a));
+      for (let x=a+10;x<b;x+=10) c.lineTo(x,crest(x));
+      c.lineTo(b,crest(b)); c.lineTo(b,576); c.lineTo(a,576); c.closePath();
+    }
+    c.clip();
+    c.fillStyle = '#24586e';
+    c.globalAlpha = .19+rise*.22;
+    c.fillRect(x0,y0,width,height);
+    if (!reduced) {
+      c.fillStyle = '#9ac2c0';
+      for (let i=0;i<36;i++) {
+        const x = (i*179+time*(i%3+2))%864, y = 355+(i*59)%221;
+        if (x<x0-20 || x>x0+width || y<y0 || y>y0+height) continue;
+        c.globalAlpha = .16+.14*Math.sin(time+i*.9);
+        c.fillRect(Math.round(x),y,7+i%17,1);
+      }
+    }
+    c.restore();
+  }
   ambience(c,game,cam) {
     const stage = game.stage.id;
     const t = game.time;
@@ -211,9 +298,18 @@ export class Renderer {
     c.fillStyle = '#0810179f';
     c.beginPath(); c.ellipse(x,y,radius,Math.max(2,radius*.31),0,0,TAU); c.fill();
     const frame = hero && !e.walk ? 0 : Math.floor(game.time*(boss?(e.second?11:7):9) + (e.id ?? 0)%4) % 4;
-    const size = hero ? 48 : boss ? 59 : e.kind === 'brute' ? 44 : 37;
+    const size = hero ? 48 : boss ? (e.kind==='boss' && e.second ? 71 : 59) : e.kind === 'brute' ? 44 : 37;
     c.save();
     const arrival = clamp((game.time-(e.spawnedAt ?? -1))/.65,0,1);
+    if (e.kind==='boss' && e.second && !reduced) {
+      c.strokeStyle = '#c89aa9';
+      c.globalAlpha = .48;
+      for (let i=0;i<5;i++) {
+        const bend = Math.sin(game.time*3+i)*8;
+        c.beginPath(); c.moveTo(0,-16); c.quadraticCurveTo((i-2)*13,-26+bend,(i-2)*18,5+bend); c.stroke();
+      }
+      c.globalAlpha = 1;
+    }
     const entrance = boss && !reduced ? (1-arrival)*16 : 0;
     c.translate(x,y+2-entrance+(boss&&!reduced?Math.sin(game.time*2.8+(e.id??0))*(e.second?3:2):0));
     c.scale((hero ? e.dx : e.facing) < 0 ? -1 : 1,1);
@@ -259,6 +355,9 @@ export class Renderer {
         for (let i=0;i<4;i++) {
           c.moveTo(r-3,0); c.lineTo(r+4,0); c.moveTo(r,-4); c.lineTo(r,4); c.rotate(TAU/4);
         }
+        break;
+      case 'surge':
+        for (const n of [-3,-2,0,2,3]) { c.moveTo(n*8,-8); c.lineTo(n*8,8); }
         break;
       case 'sweep':
       case 'gates':

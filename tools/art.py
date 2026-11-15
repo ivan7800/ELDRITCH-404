@@ -131,6 +131,61 @@ def quay():
         x,y=rng.randrange(w),rng.randrange(h)
         if rng.random()<.22: l([(x,y),(x+1,y),(x+1,y-2)],'#385151')
         else: d.point((x,y),rng.choice(['#33484b','#35504f','#625448','#3a5551']))
+    # Keep stone crossings and the five landmark coordinates readable from above.
+    props = Random(405)
+    banks = [
+        [(0,407),(54,390),(107,404),(149,394),(211,421),(270,414),(327,435),(406,418),(406,576),(0,576)],
+        [(471,421),(511,427),(574,406),(634,419),(688,399),(751,407),(808,378),(864,386),(864,576),(471,576)]
+    ]
+    for shoreline in banks:
+        p(shoreline,'#142d37')
+        edge=shoreline[:-2]
+        l(edge,'#091820',9)
+        l([(x,y-4) for x,y in edge],'#4e6a66',2)
+        l([(x,y+5) for x,y in edge],'#2d535a',2)
+    for y in range(395,576,3):
+        for _ in range(10):
+            x=props.randrange(w)
+            if im.getpixel((x,y))[:3] != (20,45,55): continue
+            l((x,y,min(x+props.randrange(4,27),405 if x<406 else 863),y),props.choice(['#193742','#24434a','#294b52']))
+    for x,y,length,width in [(97,390,154,41),(331,425,96,42),(535,420,119,42),(735,400,133,48),(408,409,167,62)]:
+        r((x-3,y,x+width+4,y+length),'#0e1b22')
+        for plank in range(y,y+length,6):
+            shade=props.choice(['#39403a','#343b37','#40443d','#4b4b3e'])
+            r((x,plank,x+width,plank+4),shade)
+            l((x+2,plank,x+width-2,plank),'#55584a')
+            l((x+4,plank+2,x+width-3,plank+2),'#353932')
+        for side in (x-2,x+width-1):
+            for post in range(y+5,y+length,29):
+                r((side-2,post-5,side+3,post+3),'#232a29')
+                l((side-2,post-5,side+3,post-5),'#77735b')
+    for x,y,wid,high in [(25,170,85,69),(126,241,59,58),(319,191,57,66),(509,165,77,87),(737,214,96,68),(797,111,61,65),(270,77,111,79),(594,102,95,65)]:
+        p([(x,y+4),(x+wid,y+15),(x+wid+32,y+39),(x+15,y+27)],'#0b1820')
+        r((x+1,y-high//2,x+wid-1,y+18),'#283639')
+        r((x+2,y+3,x+wid-2,y+18),'#202b31')
+        for window in range(x+9,x+wid-8,21):
+            r((window,y+7,window+7,y+14),'#131b21')
+            if props.random()<.72: l((window+1,y+8,window+6,y+8),'#a16a48')
+        p([(x-5,y+4),(x-5,y-high//2),(x+wid//2,y-high),(x+wid+4,y-high//2),(x+wid+4,y+4)],'#182830')
+        for tile in range(y-high//2+2,y+2,5):
+            l((x-3,tile,x+wid+2,tile),props.choice(['#2f4347','#293a3f','#233439']))
+        l([(x-5,y-high//2),(x+wid//2,y-high),(x+wid+4,y-high//2)],'#475757',2)
+        l((x-5,y+4,x+wid+4,y+4),'#62584a')
+    for y in range(230,413,7):
+        half=32 if y<340 else 36
+        for x in range(432-half,432+half,8):
+            if props.random()<.78:
+                l((x,y,x+4,y),props.choice(['#384440','#52544a','#293a3b']))
+    for x,y in [(317,306),(379,348),(474,344),(535,306),(244,238),(621,269),(165,365),(703,350)]:
+        e((x-13,y+1,x+13,y+7),'#132326')
+        r((x-2,y-17,x+1,y+4),'#303e3c')
+        l((x+2,y-18,x+2,y+3),'#8a8264')
+        r((x-4,y-21,x+4,y-16),'#241a19')
+        r((x-2,y-20,x+2,y-17),'#e4a664')
+    for x,y in [(136,456),(235,464),(375,484),(540,487),(696,474),(785,465)]:
+        p([(x-11,y),(x-8,y-17),(x+1,y-25),(x+11,y-11),(x+11,y+5),(x+1,y+11)],'#101f25')
+        l([(x-11,y),(x-8,y-17),(x+1,y-25),(x+11,y-11),(x+11,y+5),(x+1,y+11),(x-11,y)],'#625548')
+        for row in range(y-14,y+5,5): l((x-6,row,x+7,row),'#3d4136')
     return im
 save(quay(),'quay')
 
