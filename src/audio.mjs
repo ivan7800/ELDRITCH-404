@@ -61,7 +61,7 @@ export class Sound {
     this.lastFx.set(stamp,t);
     const cues = { dash:[220,48,.16,.05,'triangle'], hurt:[165,48,.25,.14,'sawtooth'], pickup:[690,1100,.12,.035,'sine'],
       kill:[100,42,.11,.035,'triangle'], blast:[95,31,.38,.14,'sawtooth'], level:[370,690,.41,.12,'sine'],
-      'ritual-accept':[173,97,.8,.08,'triangle'], boss:[73,38,1,.2,'triangle'], 'boss-phase':[94,35,.85,.2,'sawtooth'],
+      'ritual-accept':[173,97,.8,.08,'triangle'], boss:[73,38,1,.2,'triangle'], 'boss-phase':[94,35,.85,.2,'sawtooth'], 'boss-tell':[168,232,.28,.075,'triangle'],
       won:[280,555,1.3,.15,'sine'], lost:[155,46,1.3,.13,'triangle'], click:[240,285,.12,.04,'triangle'],
       evolution:[282,740,.85,.13,'sine'] };
     const arms = { salt:[125,60,.1,.09,'sawtooth'], tempest:[141,37,.14,.11,'sawtooth'], bell:[280,180,.41,.09,'sine'],

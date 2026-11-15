@@ -39,6 +39,6 @@ El perfil local versión 2 añade la campaña y las opciones de control. La carg
 
 ## GitHub y builds
 
-Crea o identifica el repositorio dedicado. Sube la fuente y el primer commit a su rama inicial conservando historia remota. Verifica `Quality`. Selecciona **GitHub Actions** como origen de Pages y ejecuta el flujo manual **Deploy Pages**. El flujo recompila y exige prueba de navegador antes de desplegar. Verifica URL, SHA y estado de despliegue. Para una release usa una etiqueta versionada, el HTML portátil y el ZIP validado.
+GitHub Pages publica el sitio estático del repositorio desde `main`. Ejecuta la compilación y conserva alineados el sitio de la raíz, su copia en `dist/`, la caché y el HTML portátil. Tras subir los cambios comprueba la ejecución de `pages build and deployment`, el SHA que desplegó y la versión visible en la portada.
 
 La carpeta `desktop/` empaqueta el HTML con Electron. El protocolo local mantiene constante el origen del guardado y sirve únicamente el HTML del juego. El flujo Desktop builds solicita los destinos NSIS y portable para Windows y AppImage para Linux. Los resultados se validan en el sistema de destino tras compilar. [Configuración de destinos de electron-builder](https://www.electron.build/docs/targets/)

@@ -3,7 +3,7 @@ import { Renderer } from './render.mjs';
 import { Input } from './input.mjs';
 import { Sound } from './audio.mjs';
 import { load, save, fresh, validate, record, key, suspendedKey, suspend, restore } from './storage.mjs';
-import { defaultKeys, defaultPad, weapons, upgrades, enemies, step, investigators, stages, playModes, relics, bestiary } from './content.mjs';
+import { defaultKeys, defaultPad, weapons, upgrades, enemies, step, investigators, stages, playModes, relics, bestiary, expeditionTime } from './content.mjs';
 import { archive, archiveCost, achievements, bonuses, buy, decisions, dispatches, endings, finalChoices, investigatorUnlocked, resolveStory, stageUnlocked } from './campaign.mjs';
 import { clamp } from './math.mjs';
 
@@ -17,7 +17,16 @@ let selected = {stage:stages.find(item=>!profile.progress.clears.includes(item.i
   character:0,mode:'story',rival:false,length:.75};
 let ending = null;
 let codexTab = 'beasts';
+let codexFrom = 'journal';
 let starting = false;
+let loadoutOpen = false;
+const padLabels = ['A','B','X','Y','LB','RB','LT','RT','View','Menu','LS','RS'];
+const keyLabel = code => ({Space:tr('Espacio','Space'),Escape:'Esc',ShiftLeft:tr('Mayús','Shift'),ControlLeft:'Ctrl'}[code] ?? code.replace(/^(Key|Digit)/,''));
+const promptFor = action => padConnected ? padLabels[profile.settings.pad[action]] : keyLabel(profile.settings.keys[action]);
+const nextChapter = () => stages.find(item => !profile.progress.clears.includes(item.id) && stageUnlocked(profile.progress,item.id)) ?? stages.at(-1);
+const storyLabel = () => !profile.progress.clears.length ? tr('Comenzar expedición','Begin expedition') :
+  profile.progress.endings.length ? tr('Repetir capítulo final','Replay final chapter') : tr('Continuar historia','Continue story');
+const arenaArt = stage => stage ? 'assets/arena'+stage+'.png' : 'assets/quay.png';
 const input = new Input();
 const sound = new Sound();
 const renderer = new Renderer(world);
@@ -59,12 +68,28 @@ function show(name) {
   overlay.className = name !== 'home' && name !== 'play' ? 'dim' : '';
   world.hidden = hud.hidden = !game || !['play','pause','options','level','ritual','result','abandon','chronicle','ending'].includes(name);
   switch (name) {
-    case 'home':
+    case 'home': {
+      const pending = profile.progress.pending;
+      const suspended = hasSuspend();
+      const chapter = pending ? stages[pending.stage] : nextChapter();
+      const progress = tr('Capítulo ','Chapter ')+(chapter.id+1)+' / '+stages.length+' · '+loc(chapter.name);
       overlay.innerHTML = '<section class="hero"><div class="title-copy"><img class="mark" src="assets/icon.png" alt=""><div class="eyebrow">'+tr('Archivo de la expedición','Expedition archive')+'</div><h1>ELDRITCH<span>404</span></h1><p class="lede">'+tr('La bajamar dejó al descubierto una puerta. Algo la está abriendo desde dentro.','Low tide uncovered a door. Something is opening it from within.')+'</p><div class="home-actions">'+
-        (profile.progress.pending?btn('chronicle',tr('Resolver decisión de campaña','Resolve story decision'),true):'')+
-        (hasSuspend()?btn('restore',tr('Reanudar expedición guardada','Resume suspended run'),true):'')+
-        btn('brief',tr('Comenzar expedición','Begin expedition')+' <b>↗</b>',true)+btn('archive',tr('Archivo y reliquias','Archive and relics'))+
-        btn('journal',tr('Cuaderno de campo','Field journal'))+btn('options',tr('Opciones','Settings'))+'</div><p class="hero-footer">'+tr('Teclado, mando y táctil · v0.2.0','Keyboard, gamepad and touch · v0.2.0')+'</p></div><div class="stage-name">'+tr('INNSMOUTH OLVIDADA','FORGOTTEN INNSMOUTH')+'</div></section>';
+        (pending?btn('chronicle',tr('Resolver decisión de campaña','Resolve story decision'),true):'')+
+        (suspended?btn('restore',tr('Reanudar expedición guardada','Resume suspended run'),!pending):'')+
+        btn('story-brief',storyLabel(),!pending&&!suspended)+
+        btn('modes',tr('Modos alternativos','Other modes'))+btn('campaign',tr('Campaña','Campaign'))+
+        btn('archive',tr('Archivo','Archive'))+btn('options',tr('Opciones','Settings'))+
+        '</div><p class="hero-footer">'+progress+' · v0.3.0</p></div></section>';
+      break;
+    }
+    case 'campaign':
+      displayCampaign();
+      break;
+    case 'modes':
+      overlay.innerHTML = panel(tr('Expediciones','Expeditions'),tr('Modos alternativos','Other modes'),
+        '<div class="mode-list">'+Object.entries(playModes).filter(([id])=>id!=='story').map(([id,mode])=>
+          '<button data-do="open-mode" data-value="'+id+'"><strong>'+loc(mode.name)+'</strong><small>'+loc(mode.desc)+'</small></button>').join('')+'</div>'+
+        group(btn('home',tr('Volver','Back'))),true);
       break;
     case 'brief':
       displayBrief();
@@ -84,7 +109,9 @@ function show(name) {
       break;
     case 'controls':
       overlay.innerHTML = panel(tr('Entrenamiento','Training'),tr('Controles','Controls'),
-        '<p>'+tr('<kbd>WASD</kbd> Mover · <kbd>Espacio</kbd> Esquivar · <kbd>E</kbd> Ritual · <kbd>Esc</kbd> Pausa','<kbd>WASD</kbd> Move · <kbd>Space</kbd> Dodge · <kbd>E</kbd> Ritual · <kbd>Esc</kbd> Pause')+'</p><p>'+tr('Mando · stick o cruceta para moverte, A para esquivar, X para ritual y Menú para pausar.','Controller · stick or D-pad to move, A to dodge, X for rituals, Menu to pause.')+'</p>'+
+        '<p>'+Object.entries(profile.settings.keys).map(([action,key])=>'<kbd>'+keyLabel(key)+'</kbd> '+loc(actionLabels[action])).join(' · ')+'</p>'+
+        '<p>'+tr('Mando: stick o cruceta para moverte.','Controller: move with the stick or D-pad.')+' '+
+        ['dash','interact','pause'].map(action=>'<kbd>'+padLabels[profile.settings.pad[action]]+'</kbd> '+loc(actionLabels[action])).join(' · ')+'</p>'+
         '<p>'+tr('Los ataques son automáticos. Recoge fragmentos y elige mejoras. En pantalla táctil usa el stick de la izquierda y los botones de acción.','Attacks are automatic. Pick up shards and choose upgrades. On touch screens use the left stick and the action buttons.')+'</p>'+
         group(btn('brief',tr('Volver','Back'),true)));
       break;
@@ -145,7 +172,7 @@ function show(name) {
       overlay.innerHTML = panel(tr('Expediciones registradas','Recorded expeditions'),tr('Cuaderno de campo','Field journal'),
         statCards([[tr('Partidas','Runs'),stats.runs],[tr('Victorias','Victories'),stats.wins],[tr('Bajas','Kills'),stats.kills],[tr('Récord','Best'),timeLabel(stats.best)]])+
         '<h3>'+tr('Hallazgos','Discoveries')+'</h3><p>'+(profile.journal.map(id=>loc(titles[id])).join(' · ') || tr('El cuaderno está en blanco.','The journal is blank.'))+'</p><p>'+tr('Evoluciones conocidas: Escopeta III + Resina negra → Temporal de sal. Campana III + Salmo de lastre → Coro de los ahogados.','Known evolutions: Shotgun III + Black Resin → Salt Tempest. Bell III + Ballast Psalm → Choir of the Drowned.')+'</p>'+
-        group(btn('codex',tr('Bestiario, recetas y logros','Bestiary, recipes and achievements'),true)+btn('home',tr('Volver','Back'))+btn('credits',tr('Créditos','Credits'))));
+        group(btn('codex',tr('Bestiario, recetas y logros','Bestiary, recipes and achievements'),true)+btn('archive',tr('Volver','Back'))+btn('credits',tr('Créditos','Credits'))));
       break;
     }
     case 'credits':
@@ -156,37 +183,64 @@ function show(name) {
         '<p>'+tr('Se eliminarán ajustes, hallazgos, credencial y estadísticas.','Settings, discoveries, credential and statistics will be erased.')+'</p>'+group(btn('options',tr('Cancelar','Cancel'),true)+btn('reset-yes',tr('Borrar perfil','Erase profile'))));
       break;
   }
-  overlay.querySelector('button,select,input')?.focus({preventScroll:true});
+  overlay.querySelector('button:not(:disabled),select,input')?.focus({preventScroll:true});
   $('touch-controls').hidden = name!=='play';
+  $('touch-dash').textContent = tr('Esquiva','Dodge');
+  $('touch-interact').textContent = tr('Ritual','Ritual');
+  $('touch-pause').textContent = tr('Pausa','Pause');
   if (name!=='play') input.releaseTouch();
 }
 const statCards = entries => '<div class="stats">'+entries.map(([label,value])=>'<div><span class="tag">'+label+'</span><b>'+value+'</b></div>').join('')+'</div>';
 function hasSuspend() {
   try { return !!storage.getItem(suspendedKey); } catch { return false; }
 }
+function displayCampaign() {
+  const progress = profile.progress;
+  const choice = id => progress.choices[id] ? ' · '+loc(decisions[progress.choices[id]]) : '';
+  const chapters = stages.map(stage => {
+    const cleared = progress.clears.includes(stage.id);
+    const unlocked = stageUnlocked(progress,stage.id);
+    const status = progress.pending?.stage===stage.id ? tr('Decisión pendiente','Decision pending') :
+      cleared ? tr('Completado','Cleared')+choice(stage.id) : unlocked ? tr('Disponible','Available') : tr('Bloqueado','Locked');
+    return '<li><button data-do="open-chapter" data-value="'+stage.id+'"'+(!unlocked||progress.pending?' disabled':'')+
+      '><strong>'+(stage.id+1)+' · '+loc(stage.name)+'</strong><small>'+status+'</small></button></li>';
+  }).join('');
+  overlay.innerHTML = panel(tr('Bitácora','Voyage log'),tr('Campaña','Campaign'),
+    (progress.pending ? group(btn('chronicle',tr('Resolver decisión de campaña','Resolve story decision'),true)) : '')+
+    '<ol class="mode-list chapter-list">'+chapters+'</ol>'+
+    group(btn('campaign-endings',tr('Finales descubiertos','Discovered endings')+' · '+progress.endings.length+'/'+Object.keys(endings).length)+btn('home',tr('Volver','Back'))),true);
+}
 function displayBrief() {
   const progress = profile.progress;
   const stage = stages[selected.stage];
   const char = investigators[selected.character];
   const free = selected.mode==='free';
+  const story = selected.mode==='story';
   const boss = enemies[selected.rival?stage.optional:stage.main];
-  const modes = Object.entries(playModes).map(([id,mode])=>pick('pick-mode',id,loc(mode.name),id===selected.mode));
+  const first = stage.id===0 && story;
+  const showLoadout = loadoutOpen || !story;
   const maps = stages.map(item=>pick('pick-stage',item.id,(item.id+1)+' · '+loc(item.name),item.id===stage.id,!free&&!stageUnlocked(progress,item.id)));
   const roster = investigators.map(item=>pick('pick-character',item.id,loc(item.name),item.id===char.id,!free&&!investigatorUnlocked(progress,item.id)));
-  const first = stage.id===0 && !selected.rival && selected.mode==='story';
-  overlay.innerHTML = panel(tr('Preparación','Briefing'),loc(stage.name),
-    group(btn('start',first?tr('Entrar en el muelle','Enter the quay'):tr('Entrar en expedición','Start expedition'),true)+
-      btn('controls',tr('Controles','Controls'))+btn('home',tr('Volver','Back')))+
-    '<h3>'+tr('Modo','Mode')+'</h3><div class="selection">'+modes.join('')+'</div><p>'+loc(playModes[selected.mode].desc)+'</p>'+
-    '<h3>'+tr('Escenario','Stage')+'</h3><div class="selection">'+maps.join('')+'</div>'+
+  const objective = selected.mode==='endless' ?
+    tr('Derrota a tantos jefes como puedas. Registra tu marca desde la pausa.','Defeat as many bosses as you can. Record your score from the pause menu.') :
+    tr('Resiste hasta que llegue el jefe y derrótalo.','Survive until the boss arrives, then defeat it.');
+  const preparations = '<h3>'+tr('Escenario','Stage')+'</h3><div class="selection">'+maps.join('')+'</div>'+
     '<h3>'+tr('Investigador','Investigator')+'</h3><div class="selection">'+roster.join('')+'</div>'+
-    (profile.stats.veteran?'<p class="tag">'+tr('Credencial de veterano activa · Botas I','Veteran credential active · Boots I')+'</p>':'')+
-    '<p>'+loc(weapons[char.weapon].name)+' · '+char.hp+' HP · '+Math.round(char.speed*100)+'% '+tr('velocidad','speed')+
+    '<p>'+char.hp+' HP · '+Math.round(char.speed*100)+'% '+tr('velocidad','speed')+
     ' · '+Math.round(char.power*100)+'% '+tr('potencia','power')+' · '+(100-char.sanityCost)+'% '+tr('cordura','sanity')+'</p>'+
-    '<h3>'+tr('Encuentro','Encounter')+'</h3><p>'+loc(boss.name)+'</p>'+
-    group(pick('pick-rival',0,loc(enemies[stage.main].name),!selected.rival)+pick('pick-rival',1,loc(enemies[stage.optional].name),selected.rival,selected.mode==='story'))+
-    (free?group(pick('pick-length',.5,tr('Corta','Short'),selected.length===.5)+pick('pick-length',.75,tr('Media','Medium'),selected.length===.75)+pick('pick-length',1.35,tr('Larga','Long'),selected.length===1.35)):''),
-    true);
+    (!story ? '<h3>'+tr('Encuentro','Encounter')+'</h3>'+group(pick('pick-rival',0,loc(enemies[stage.main].name),!selected.rival)+
+      pick('pick-rival',1,loc(enemies[stage.optional].name),selected.rival)) : '')+
+    (free ? '<h3>'+tr('Duración','Duration')+'</h3>'+group(pick('pick-length',.5,tr('Corta','Short'),selected.length===.5)+pick('pick-length',.75,tr('Media','Medium'),selected.length===.75)+pick('pick-length',1.35,tr('Larga','Long'),selected.length===1.35)) : '');
+  overlay.innerHTML = panel(story ? tr('Capítulo ','Chapter ')+(stage.id+1)+' / '+stages.length : loc(playModes[selected.mode].name),loc(stage.name),
+    '<div class="brief-overview"><div><p class="brief-objective">'+objective+'</p><p>'+(selected.rival?tr('Encuentro alternativo. Observa el aviso de carga antes de esquivar.','Alternate encounter. Watch for the windup before dodging.'):loc(stage.brief))+'</p>'+
+    '<p><strong>'+timeLabel(expeditionTime(stage,selected.mode,selected.length))+'</strong> · '+loc(boss.name)+'</p>'+
+    '<p>'+loc(char.name)+' · '+loc(weapons[char.weapon].name)+'</p>'+
+    (profile.stats.veteran&&!['free','challenge'].includes(selected.mode)?'<p class="tag">'+tr('Credencial de veterano activa · Botas I','Veteran credential active · Boots I')+'</p>':'')+
+    '</div><img src="'+arenaArt(stage.id)+'" alt="" width="240" height="135"></div>'+
+    group(btn('start',first?tr('Entrar en el muelle','Enter the quay'):tr('Entrar en expedición','Start expedition'),true)+
+      (story?btn('toggle-loadout',showLoadout?tr('Ocultar preparación','Hide loadout'):tr('Cambiar preparación','Change loadout')):'')+
+      btn('controls',tr('Controles','Controls'))+btn(story?'home':'modes',tr('Volver','Back')))+
+    (showLoadout?preparations:''),true);
 }
 function displayArchive() {
   const p = profile.progress;
@@ -198,7 +252,7 @@ function displayArchive() {
   const loot = relics.filter(item=>p.relics.includes(item.id)).map(item=>pick('equip',item.id,loc(item.name)+' · '+loc(meters[item.stat])+
     ' +'+(item.stat==='vitality'||item.stat==='reach'?item.value:Math.round(item.value*100)+'%'),p.equipped===item.id));
   overlay.innerHTML=panel(tr('Mejoras permanentes','Permanent upgrades'),tr('Archivo','Archive'),
-    group(btn('home',tr('Volver','Back'),true))+'<p>'+tr('Sellos disponibles','Available seals')+' · '+p.credits+'</p>'+
+    group(btn('journal',tr('Cuaderno de campo','Field journal'),true)+btn('home',tr('Volver','Back')))+'<p>'+tr('Sellos disponibles','Available seals')+' · '+p.credits+'</p>'+
     '<div class="archive-grid">'+grid+'</div><h3>'+tr('Reliquias','Relics')+' · '+p.relics.length+'/30</h3><p>'+
     tr('Recupera reliquias derrotando jefes. Puedes equipar una.','Recover relics by defeating bosses. You can equip one.')+'</p>'+
     '<div class="selection">'+[pick('equip','',tr('Sin reliquia','No relic'),!p.equipped),...loot].join('')+'</div>',true);
@@ -219,7 +273,7 @@ function displayCodex() {
     (p.endings.includes(id)?loc(line):tr('Pendiente','Locked'))+'</li>').join('');
   if (codexTab==='records') body=Object.entries(playModes).map(([id,mode])=>'<li>'+loc(mode.name)+' · '+timeLabel(p.records[id]?.time??0)+
     ' · '+(p.records[id]?.kills??0)+' '+tr('bajas','kills')+'</li>').join('');
-  overlay.innerHTML=panel(tr('Cuaderno de campo','Field journal'),tabs[codexTab],group(btn('journal',tr('Volver','Back'),true))+
+  overlay.innerHTML=panel(tr('Cuaderno de campo','Field journal'),tabs[codexTab],group(btn(codexFrom,tr('Volver','Back'),true))+
     '<div class="selection">'+Object.entries(tabs).map(([id,name])=>pick('codex-tab',id,name,codexTab===id)).join('')+'</div><ul class="codex-list">'+body+'</ul>',true);
 }
 function displayChronicle() {
@@ -236,18 +290,18 @@ function displayChronicle() {
       'Three rescued duplicates change the seal. Three anchors and corruption of 2 or less change control. Three marks change the merge.')+'</p>':'')+
     group(Object.entries(choices).map(([id,name])=>pick('story-choice',id,loc(name))).join('')),true);
 }
+const actionLabels = {up:['Arriba','Up'],down:['Abajo','Down'],left:['Izquierda','Left'],right:['Derecha','Right'],
+  dash:['Esquiva','Dodge'],interact:['Ritual','Ritual'],pause:['Pausa','Pause'],confirm:['Confirmar','Confirm'],back:['Atrás','Back']};
 function displayOptions() {
   const s = profile.settings;
   const setting = (label,field,markup) => '<label class="setting" for="'+field+'">'+label+markup+'</label>';
   const select = (id,choices) => '<select id="'+id+'" data-setting="'+id+'">'+choices.map(([value,label])=>'<option value="'+value+'"'+(s[id]===value?' selected':'')+'>'+label+'</option>').join('')+'</select>';
   const check = id => '<input id="'+id+'" data-setting="'+id+'" type="checkbox"'+(s[id]?' checked':'')+'>';
   const range = (id,min,max) => '<input id="'+id+'" data-setting="'+id+'" type="range" min="'+min+'" max="'+max+'" step=".01" value="'+s[id]+'">';
-  const labels = {up:['Arriba','Up'],down:['Abajo','Down'],left:['Izquierda','Left'],right:['Derecha','Right'],
-    dash:['Esquiva','Dodge'],interact:['Ritual','Ritual'],pause:['Pausa','Pause'],confirm:['Confirmar','Confirm'],back:['Atrás','Back']};
-  const buttons = ['A','B','X','Y','LB','RB','LT','RT','View','Menu','LS','RS'];
+
   const remaps = (groupId, values, options) => Object.entries(values).map(([id,value])=>{
     const field=groupId+'-'+id;
-    return setting(loc(labels[id]),field,'<select id="'+field+'" data-setting="'+field+'">'+options.map(([option,label])=>
+    return setting(loc(actionLabels[id]),field,'<select id="'+field+'" data-setting="'+field+'">'+options.map(([option,label])=>
       '<option value="'+option+'"'+(option===value?' selected':'')+'>'+label+'</option>').join('')+'</select>');
   }).join('');
   const keyOptions = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'].map(letter=>['Key'+letter,letter]);
@@ -265,38 +319,62 @@ function displayOptions() {
     btn('export',tr('Exportar perfil','Export profile'))+btn('import',tr('Importar perfil','Import profile'))+
     (optionsFrom==='home'?btn('reset',tr('Borrar perfil','Erase profile')):''))+
     '<h3>'+tr('Teclado','Keyboard')+'</h3>'+remaps('keys',s.keys,keyOptions)+
-    '<h3>'+tr('Botones del mando','Gamepad buttons')+'</h3>'+remaps('pad',s.pad,buttons.map((name,i)=>[i,name]))+
+    '<h3>'+tr('Botones del mando','Gamepad buttons')+'</h3>'+remaps('pad',s.pad,padLabels.map((name,i)=>[i,name]))+
     group(btn('reset-controls',tr('Restaurar controles','Reset controls')))+
     '<input type="file" id="profile-file" accept=".json,application/json" hidden>');
 }
 function makeHud() {
   hud.innerHTML = '<div class="hud-top"><div class="hp-box"><div class="hud-row"><span>'+tr('SALUD','HEALTH')+'</span><output id="hp-text"></output></div><meter id="hp" min="0" max="100" value="100" aria-label="'+tr('Salud','Health')+'"></meter><div class="hud-row"><span>'+tr('CORDURA','SANITY')+'</span><output id="sanity-text"></output></div><meter id="sanity" min="0" max="100" value="100" aria-label="'+tr('Cordura','Sanity')+'"></meter></div>'+
     '<div class="run-box"><span class="status" id="tide"></span><time id="clock">00:00</time><div class="hud-row"><span id="level-text"></span><span id="kills"></span></div><meter id="xp" min="0" max="5" value="0" aria-label="'+tr('Experiencia','Experience')+'"></meter></div>'+
-    '<div class="tool-box"><div class="hud-row"><span>'+tr('ESQUIVA','DODGE')+'</span><span id="dash"></span></div><div class="hud-row"><span>'+tr('CORRUPCIÓN','CORRUPTION')+'</span><span id="corrupt"></span></div></div></div>'+
+    '<div class="tool-box"><div class="hud-row"><span>'+tr('ESQUIVA','DODGE')+'</span><span id="dash"></span></div><div class="hud-row"><span>'+tr('CORRUPCIÓN','CORRUPTION')+'</span><span id="corrupt"></span></div><div class="hud-row" id="current-row" hidden><span>'+tr('CORRIENTE','CURRENT')+'</span><span id="current-direction"></span></div></div></div>'+
     '<div class="arsenal" id="arsenal"></div><div class="interaction" id="interaction" hidden><button data-do="interact" id="interact-button"></button></div>'+
-    '<div class="boss-bar" id="boss-bar" hidden><span id="boss-name"></span><meter id="boss-meter" min="0" max="100" value="100"></meter></div>';
+    '<div class="boss-bar" id="boss-bar" hidden><span id="boss-name"></span><span id="boss-warning" class="boss-warning" hidden></span><meter id="boss-meter" min="0" max="100" value="100"></meter></div>';
   lastArsenal = '';
+  hudNodes = {};
 }
 let lastArsenal = '';
+let hudNodes;
+function updateField(id,value,prop='textContent') {
+  const node = hudNodes[id] ??= $(id);
+  if (node[prop] !== value) node[prop] = value;
+}
 function updateHud() {
   const p = game.player;
   const near = game.nearestSite();
   const boss = game.boss;
-  $('hp').max = p.maxHp; $('hp').value = p.hp; $('hp-text').value = Math.ceil(p.hp)+'/'+Math.round(p.maxHp);
-  $('sanity').value = game.sanity; $('sanity-text').value = game.sanity+'%';
-  $('xp').max = game.goal; $('xp').value = game.xp;
-  $('level-text').textContent = (tr('NV ','LV '))+game.level;
-  $('kills').textContent = game.kills+' '+tr('BAJAS','KILLS');
-  $('clock').textContent = timeLabel(game.time);
-  const phase = { low: tr('Bajamar','Low tide'), tide: tr('Marea ascendente','Rising tide'), deep: tr('Cerco abisal','Abyssal siege'), boss:tr('La Sacristana','The Sacristan') };
-  $('tide').textContent = boss ? loc(enemies[boss.kind].name) : phase[game.phase()];
-  $('dash').textContent = p.dashCooldown ? p.dashCooldown.toFixed(1)+'s' : tr('LISTA','READY');
-  $('corrupt').textContent = game.corruption.toString();
-  $('interaction').hidden = !near || screen !== 'play';
-  if (near) $('interact-button').textContent = (padConnected ? 'X' : 'E')+' · '+loc(near.label);
-  $('boss-bar').hidden = !boss;
-  if (boss) { $('boss-name').textContent=loc(enemies[boss.kind].name); $('boss-meter').max = boss.maxHp; $('boss-meter').value = Math.max(0,boss.hp); }
-  const fingerprint = JSON.stringify(game.arsenal);
+  updateField('hp',p.maxHp,'max');
+  updateField('hp',p.hp,'value');
+  updateField('hp-text',Math.ceil(p.hp)+'/'+Math.round(p.maxHp),'value');
+  updateField('sanity',game.sanity,'value');
+  updateField('sanity-text',Math.round(game.sanity)+'%','value');
+  updateField('xp',game.goal,'max');
+  updateField('xp',game.xp,'value');
+  updateField('level-text',tr('NV ','LV ')+game.level);
+  updateField('kills',game.kills+' '+tr('BAJAS','KILLS'));
+  updateField('clock',boss ? timeLabel(game.time) : timeLabel(Math.ceil(Math.max(0,game.bossAt-game.time))));
+  const phase = {low:tr('Bajamar','Low tide'),tide:tr('Marea ascendente','Rising tide'),deep:tr('Cerco abisal','Abyssal siege')};
+  updateField('tide',boss ? (boss.second?tr('Jefe · fase II','Boss · phase II'):tr('Jefe · fase I','Boss · phase I')) :
+    tr('Jefe en · ','Boss in · ')+phase[game.phase()]);
+  updateField('dash',p.dashCooldown ? p.dashCooldown.toFixed(1)+'s' : tr('LISTA','READY'));
+  updateField('corrupt',game.corruption.toString());
+  const current = game.current();
+  updateField('current-row',!current,'hidden');
+  if (current) {
+    const arrows = ['→','↘','↓','↙','←','↖','↑','↗'];
+    const direction = Math.round(Math.atan2(current.y,current.x)*4/Math.PI);
+    updateField('current-direction',arrows[(direction+8)%8]);
+  }
+  updateField('interaction',!near || screen!=='play','hidden');
+  if (near) updateField('interact-button',promptFor('interact')+' · '+loc(near.label));
+  updateField('boss-bar',!boss,'hidden');
+  if (boss) {
+    updateField('boss-name',loc(enemies[boss.kind].name));
+    updateField('boss-meter',boss.maxHp,'max');
+    updateField('boss-meter',Math.max(0,boss.hp),'value');
+    updateField('boss-warning',boss.action!=='tell','hidden');
+    updateField('boss-warning',tr('Ataque inminente','Incoming attack'));
+  }
+  const fingerprint = Object.entries(game.arsenal).join('|');
   if (fingerprint !== lastArsenal) {
     lastArsenal = fingerprint;
     $('arsenal').innerHTML = Object.entries(game.arsenal).map(([id,rank]) =>
@@ -311,18 +389,20 @@ function notice(value) {
 function persist() {
   if (!save(storage,profile)) notice(tr('No se pudo guardar el perfil.','The profile could not be saved.'));
 }
-async function start() {
+async function start(replace = false) {
   if (starting) return;
   if (selected.mode==='story' && profile.progress.pending) { show('chronicle'); return; }
-  if (hasSuspend()) { show('replace-save'); return; }
+  if (!replace && hasSuspend()) { show('replace-save'); return; }
   starting = true;
   try { await ready; } finally { starting = false; }
   const fair = selected.mode==='challenge' || selected.mode==='free';
   const stage = selected.mode==='free' || stageUnlocked(profile.progress,selected.stage) ? selected.stage : 0;
   const character = selected.mode==='free' || investigatorUnlocked(profile.progress,selected.character) ? selected.character : 0;
-  enter(new Expedition({...selected,stage,character, difficulty:selected.mode==='challenge'?'standard':profile.settings.difficulty, veteran:!fair&&profile.stats.veteran,
+  const expedition = new Expedition({...selected,stage,character, difficulty:selected.mode==='challenge'?'standard':profile.settings.difficulty, veteran:!fair&&profile.stats.veteran,
     perks:fair?{}:bonuses(profile.progress), openArsenal: selected.mode==='free'?9:stage,
-    ...(testClock || selected.mode==='challenge'?{seed:404+stage*17}:{})}));
+    ...(testClock || selected.mode==='challenge'?{seed:404+stage*17}:{})});
+  if (replace) storage.removeItem(suspendedKey);
+  enter(expedition);
 }
 function enter(expedition) {
   samples.length = 0;
@@ -341,8 +421,36 @@ async function action(id,value) {
   switch(id) {
     case 'home': game = null; show('home'); break;
     case 'start': await start(); break;
+    case 'story-brief':
+    case 'open-chapter':
+      selected.mode='story';
+      selected.stage=id==='open-chapter'?Number(value):nextChapter().id;
+      selected.rival=false;
+      if (!investigatorUnlocked(profile.progress,selected.character)) selected.character=0;
+      loadoutOpen=false;
+      show('brief');
+      break;
+    case 'open-mode':
+      if (!Object.hasOwn(playModes,value) || value==='story') break;
+      selected.mode=value;
+      selected.rival=false;
+      if (value!=='free') {
+        if (!stageUnlocked(profile.progress,selected.stage)) selected.stage=nextChapter().id;
+        if (!investigatorUnlocked(profile.progress,selected.character)) selected.character=0;
+      }
+      show('brief');
+      break;
+    case 'toggle-loadout':
+      loadoutOpen=!loadoutOpen;
+      show('brief');
+      overlay.querySelector('[data-do="toggle-loadout"]')?.focus();
+      break;
+    case 'campaign-endings':
+      codexFrom='campaign'; codexTab='finales'; show('codex'); break;
+    case 'codex':
+      codexFrom='journal'; codexTab='beasts'; show('codex'); break;
     case 'replace-yes':
-      storage.removeItem(suspendedKey); await start(); break;
+      await start(true); break;
     case 'restore':
       await ready;
       try {
@@ -366,15 +474,6 @@ async function action(id,value) {
     case 'abandon-yes':
       try { storage.removeItem(suspendedKey); } catch {}
       game=null; show('home'); break;
-    case 'pick-mode':
-      if (!Object.hasOwn(playModes,value)) break;
-      selected.mode=value;
-      if (value==='story') selected.rival=false;
-      if (value!=='free') {
-        if (!stageUnlocked(profile.progress,selected.stage)) selected.stage=0;
-        if (!investigatorUnlocked(profile.progress,selected.character)) selected.character=0;
-      }
-      showSelection(id,value); break;
     case 'pick-stage': selected.stage=Number(value); showSelection(id,value); break;
     case 'pick-character': selected.character=Number(value); showSelection(id,value); break;
     case 'pick-rival': selected.rival=value==='1'; showSelection(id,value); break;
@@ -389,7 +488,7 @@ async function action(id,value) {
       if (!result) break;
       persist();
       if (result.ending) { ending=result.ending; show('ending'); }
-      else { selected.stage=result.stage+1; selected.rival=false; selected.mode='story'; show('brief'); }
+      else { selected.stage=result.stage+1; selected.rival=false; selected.mode='story'; loadoutOpen=false; show('brief'); }
       break;
     }
     case 'resume': accumulator=0; pending={}; show('play'); break;
@@ -435,7 +534,9 @@ function back() {
     case 'pause': action('resume'); break;
     case 'options': show(optionsFrom); break;
     case 'credits': show('journal'); break;
-    case 'codex': show('journal'); break;
+    case 'codex': show(codexFrom); break;
+    case 'journal': show('archive'); break;
+    case 'brief': show(selected.mode==='story'?'home':'modes'); break;
     case 'controls':
     case 'replace-save': show('brief'); break;
     case 'reset': show('options'); break;
@@ -453,7 +554,7 @@ function navigate(controller) {
   const focused = document.activeElement;
   const current = items.indexOf(focused);
   if (controller.nav) {
-    if (['left','right'].includes(controller.nav) && focused.dataset.setting) {
+    if (['left','right'].includes(controller.nav) && focused.dataset.setting && focused.type!=='checkbox') {
       const change = controller.nav === 'left' ? -1 : 1;
       if (focused.tagName === 'SELECT') focused.selectedIndex = clamp(focused.selectedIndex+change,0,focused.options.length-1);
       else if (focused.type === 'range') focused.value = clamp(Number(focused.value)+change*.05,Number(focused.min),Number(focused.max));
@@ -488,9 +589,6 @@ for (const event of ['pointerup','pointercancel','lostpointercapture']) padArea.
   if (e.pointerId===pointer) { pointer=null; input.releaseTouch(); }
 });
 for (const id of ['dash','interact']) $('touch-'+id).addEventListener('pointerdown',()=>{input.touch[id]=true;});
-for (const [id,es,en] of [['touch-dash','Esquiva','Dodge'],['touch-interact','Ritual','Ritual'],['touch-pause','Pausa','Pause']]) {
-  $(id).textContent=tr(es,en);
-}
 for (const event of ['pointerdown','keydown','gamepadconnected','gamepadbuttondown']) {
   window.addEventListener(event,() => sound.unlock().then(()=>sound.volume(profile.settings)).catch(()=>{}));
 }
@@ -508,6 +606,7 @@ app.addEventListener('change',async e => {
       $(field)?.focus();
     }
     app.classList.toggle('large',profile.settings.large);
+    app.classList.toggle('contrast',profile.settings.contrast);
   }
   if (e.target.id === 'profile-file' && e.target.files[0]) {
     try {
@@ -569,6 +668,12 @@ function syncScreen() {
   for (const event of game.events.splice(0)) {
     sound.event(event.type,event.value);
     if (event.type === 'boss') notice(loc(enemies[game.bossId].name));
+    if (event.type === 'landmark' && !game.boss) {
+      const cue = event.value===6 ? tr('Los proyectiles invierten su curso','Projectiles reverse course') :
+        event.value===7 ? tr('Descarga desde los estantes','Volley from the shelves') :
+        loc(game.stage.feature)+' · '+tr('Suelo inestable','Unstable ground');
+      notice(cue);
+    }
     if (event.type === 'boss-phase') notice(tr('Segunda fase','Second phase'));
     if (event.type === 'endless-clear') notice(tr('Jefes vencidos · ','Bosses defeated · ')+game.clearCount);
     if (event.type === 'evolution') notice(loc(weapons[event.value].name));

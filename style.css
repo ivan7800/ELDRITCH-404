@@ -15,7 +15,7 @@ button.primary:hover{background:#c5f4df}
 #overlay>*{pointer-events:auto}
 #overlay.dim{background:#071015c2;pointer-events:auto}
 #overlay:empty{display:none}
-.hero{width:100%;height:100%;background:linear-gradient(90deg,#0b131de8 0%,#0b131dac 35%,transparent 74%),url(assets/title.png) center/cover;image-rendering:pixelated;display:flex;align-items:center;overflow:auto;padding:28px clamp(24px,7vw,138px)}
+.hero{width:100%;height:100%;background:linear-gradient(90deg,#090f15f7 0%,#0b151cdb 32%,#0b151c29 72%),url(assets/title.png) center/cover;image-rendering:pixelated;display:flex;align-items:center;overflow:auto;padding:28px clamp(24px,7vw,138px)}
 .hero::after{content:"";position:absolute;inset:20px;pointer-events:none;border:1px solid #a2c2b037}
 .title-copy{position:relative;z-index:1;max-width:600px;width:100%;padding:18px 0}
 .mark{width:59px;height:59px;display:block;margin-bottom:18px}
@@ -98,3 +98,41 @@ kbd{font:700 .75rem var(--mono);display:inline-block;border:1px solid #607d72;pa
   .interaction{bottom:165px}
 }
 @media(max-width:680px){.hero{background-position:56% center}.hero::after{inset:10px}.stage-name{display:none}.hud-top{padding:8px;gap:6px;grid-template-columns:minmax(82px,1fr) auto minmax(62px,1fr)}.hp-box,.tool-box,.run-box{min-width:0;padding:5px}.run-box .status{font-size:.5rem;letter-spacing:0}.hud-row{font-size:.58rem}.hud-row span{overflow:hidden;text-overflow:ellipsis}.cards{grid-template-columns:1fr;gap:7px}.loot{min-height:auto;gap:5px}.loot svg{display:none}.boss-bar{width:48%;left:auto;right:8px;transform:none}.arsenal{left:8px;gap:3px;padding:3px}.arm{min-width:24px}.arm svg{width:15px;height:15px}}
+
+/* Ink and bone carry the interface. Brass marks objectives; red marks threats. */
+.hero::after { border-color: #e1bb8860; inset: clamp(9px,2vw,24px); }
+.title-copy { max-width: 640px; }
+.hero-footer { margin-top: 18px; color: var(--gold); }
+.home-actions { max-width: 345px; }
+.home-actions button { background: #132129e8; }
+.home-actions button.primary { background: var(--mint); }
+.mode-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin:18px 0; }
+.mode-list button { width:100%; display:grid; gap:4px; background:#14262b; }
+.mode-list button:hover,.mode-list button:focus-visible { background:#263e40; }
+.mode-list strong { font:700 1.16rem/1.13 var(--serif); }
+.mode-list small { color:var(--muted); line-height:1.35; }
+.chapter-list { padding:0; list-style:none; }
+.chapter-list li { min-width:0; }
+.chapter-list button:disabled { opacity:.63; cursor:default; }
+.brief-overview { display:grid; grid-template-columns:minmax(0,1fr) minmax(160px,32%); align-items:center; gap:16px; }
+.brief-overview img { width:100%; height:auto; aspect-ratio:16 / 9; object-fit:cover; image-rendering:pixelated; border:1px solid var(--line); }
+.brief-overview .brief-objective { color:var(--bone); font-weight:700; }
+.brief-overview strong { color:var(--gold); font-variant-numeric:tabular-nums; }
+.boss-warning { display:block; margin:.3em 0; color:var(--bone); font-weight:bold; }
+.boss-warning::before { content:"! "; color:var(--red); }
+#hp::-moz-meter-bar,#boss-meter::-moz-meter-bar { background:var(--red); }
+#sanity::-moz-meter-bar { background:#b799cd; }
+:focus-visible { outline-offset:2px; }
+.panel { overscroll-behavior:contain; }
+@media(max-width:560px) {
+  .hero { background-position:61% center; align-items:safe center; }
+  .mode-list,.brief-overview { grid-template-columns:1fr; gap:7px; }
+  .brief-overview img { max-height:105px; }
+  .run-box .status { font-size:.59rem; }
+  .touch-actions button { min-height:44px; }
+}
+@media(max-height:570px) {
+  .hero { align-items:safe center; padding-block:13px; }
+  .mark { display:none; }
+  .lede { margin-block:14px; }
+}

@@ -94,10 +94,13 @@ async function run() {
     await page.getByRole('button',{name:'Shelter the duplicate'}).click();
     await page.getByRole('heading',{name:'Cemetery of the Nameless'}).waitFor();
     await page.getByRole('button',{name:'Back',exact:true}).click();
+    await page.getByRole('button',{name:'Archive',exact:true}).click();
     await page.getByRole('button',{name:'Field journal'}).click();
     await page.getByText('The Tide Sacristan',{exact:false}).waitFor();
     await page.getByRole('button',{name:'Back',exact:true}).click();
-    await page.getByRole('button',{name:'Begin expedition'}).click();
+    await page.getByRole('button',{name:'Back',exact:true}).click();
+    await page.getByRole('button',{name:'Continue story'}).click();
+    await page.getByRole('button',{name:'Change loadout'}).click();
     await page.getByRole('button',{name:'1 · Forgotten Innsmouth'}).click();
     await page.getByText('Veteran credential active',{exact:false}).waitFor();
     await page.getByRole('button',{name:'Enter the quay'}).click();
@@ -121,7 +124,7 @@ async function run() {
     await pwa.getByRole('button',{name:'Comenzar expedición'}).click();
     await pwa.getByRole('button',{name:'Entrar en el muelle'}).click();
     await pwa.locator('#hud').waitFor();
-    await pwa.waitForFunction(()=>document.querySelector('#clock').textContent !== '00:00');
+    await pwa.waitForFunction(()=>document.querySelector('#clock').textContent === '04:59');
     console.log('OK · PWA: installed, reloaded and played with network disabled');
 
     const file=await ctx.newPage(); watch(file);
@@ -134,6 +137,19 @@ async function run() {
     await file.keyboard.press('Escape');
     await file.getByRole('heading',{name:'Pausa',exact:true}).waitFor();
     console.log('OK · portable HTML: started and paused directly from file://');
+    const mobile=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+    const touch=await mobile.newPage(); watch(touch);
+    await touch.goto(url+'/?qa=1');
+    await touch.getByRole('button',{name:'Comenzar expedición'}).tap();
+    await touch.getByRole('button',{name:'Entrar en el muelle'}).tap();
+    const stick=touch.locator('#touch-stick');
+    await stick.waitFor();
+    await touch.locator('#touch-dash').tap();
+    await touch.getByRole('button',{name:'Pausa',exact:true}).tap();
+    await touch.getByRole('heading',{name:'Pausa',exact:true}).waitFor();
+    await touch.getByRole('button',{name:'Guardar y salir'}).tap();
+    await touch.getByRole('button',{name:'Reanudar expedición guardada'}).waitFor();
+    console.log('OK · mobile: touch controls, pause and save at 390 × 844');
     assert.deepEqual(errors,[]);
   } finally {
     await browser?.close();

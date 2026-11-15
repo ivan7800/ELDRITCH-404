@@ -38,7 +38,10 @@ for (const name of sources) {
   code = code.replace(/^import \{([^}]+)\} from '\.\/(\w+)\.mjs';$/gm,'const {$1} = modules.$2;');
   code = code.replace(/^export /gm,'');
   if (name === 'render') code = code.replace("'assets/' + name + '.png'","art[name + '.png']");
-  if (name === 'app') code = code.replaceAll('assets/icon.png',uris['icon.png']);
+  if (name === 'app') {
+    code = code.replaceAll('assets/icon.png',uris['icon.png']);
+    code = code.replace("'assets/arena'+stage+'.png' : 'assets/quay.png'", "art['arena'+stage+'.png'] : art['quay.png']");
+  }
   moduleCode.push('modules.'+name+' = (() => {\n'+code+'\nreturn {'+exports.join(',')+'};\n})();');
 }
 const css = (await readFile('style.css','utf8')).replace('assets/title.png',uris['title.png']);

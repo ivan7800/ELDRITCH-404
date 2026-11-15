@@ -1,4 +1,4 @@
-import { arena, weapons, upgrades, enemies, stages, stageWaves, investigators, playModes } from './content.mjs';
+import { arena, weapons, upgrades, enemies, stages, stageWaves, investigators, playModes, expeditionTime } from './content.mjs';
 import { clamp, distance2, angleTo, seeded, SpatialGrid, Pool } from './math.mjs';
 
 export class Expedition {
@@ -10,7 +10,7 @@ export class Expedition {
     this.character = investigators[character] ?? investigators[0];
     this.waveTable = stageWaves(this.stage);
     this.bossId = rival ? this.stage.optional : this.stage.main;
-    this.duration = Math.round(this.stage.duration * (this.playMode === 'free' ? (length ?? .75) : playModes[this.playMode].length));
+    this.duration = expeditionTime(this.stage,this.playMode,length ?? .75);
     this.bossAt = this.duration;
     this.clearCount = 0;
     this.perks = this.playMode === 'challenge' ? {} : perks;
@@ -82,6 +82,9 @@ export class Expedition {
     }
     else if (this.xp >= this.goal) this.offerUpgrades();
   }
+  current() {
+    return this.stage.id===3 ? {x:Math.sin(this.time*.32)*19,y:Math.cos(this.time*.28)*15} : null;
+  }
   move(dt, input) {
     const p = this.player;
     const x = input.x ?? 0;
@@ -104,9 +107,10 @@ export class Expedition {
       this.character.speed*(1+(this.perks.speed??0)+this.mod('fleet')+(this.sanity<=28?.08:0)) : 0);
     p.x = clamp(p.x + p.dx * speed * dt, 24, arena.width - 24);
     p.y = clamp(p.y + p.dy * speed * dt, 24, arena.height - 24);
-    if (this.stage.id===3) {
-      p.x = clamp(p.x+Math.sin(this.time*.32)*dt*19,24,arena.width-24);
-      p.y = clamp(p.y+Math.cos(this.time*.28)*dt*15,24,arena.height-24);
+    const current = this.current();
+    if (current) {
+      p.x = clamp(p.x+current.x*dt,24,arena.width-24);
+      p.y = clamp(p.y+current.y*dt,24,arena.height-24);
     }
     p.walk = speed > 0;
   }
@@ -188,6 +192,7 @@ export class Expedition {
     const i = this.stage.id;
     if (!i || i===3 || this.time<this.landmarkTimer) return;
     this.landmarkTimer = this.time + 19 - i*.7;
+    this.emit('landmark',i);
     const p = this.player;
     if (i===6) {
       this.hazards.live.forEach(h=>{h.vx *= -.8; h.vy *= -.8;});
@@ -331,6 +336,7 @@ export class Expedition {
       boss.action = 'tell';
       boss.timer = (phaseTwo ? .81 : 1.15)*(this.playMode==='nightmare'?.81:1);
       boss.sequence++;
+      this.emit('boss-tell');
       boss.aim = angleTo(boss, this.player);
       if (pattern!=='tide') {
         const rivalPattern = enemies[boss.kind].stage===0?'cross':this.stage.pattern;

@@ -39,22 +39,37 @@ export class Renderer {
     c.save();
     c.translate(-cx, -cy);
 
-    for (const effect of game.effects.live) this.drawEffect(c, effect, game.time, reduced, false);
+    for (const effect of game.effects.live) {
+      if (this.visible(effect,cam,2*effect.radius+40)) this.drawEffect(c,effect,game.time,reduced,false);
+    }
+    const warning = contrast ? '#fff4b3' : '#ffb3a7';
     for (const hazard of game.hazards.live) {
+      if (!this.visible(hazard,cam,hazard.kind==='seal'?75:115)) continue;
       const x = hazard.x/2;
       const y = hazard.y/2;
       if (hazard.kind === 'seal') {
-        this.ring(c,x,y,hazard.radius/2,'#ef8a8c',hazard.delay > 0 ? .78 : .95);
-        this.ring(c,x,y,hazard.radius/2*clamp(1-hazard.delay, .2, 1),'#ec91a3',.6);
-        c.globalAlpha = hazard.delay > 0 ? .18 : .42;
-        c.fillStyle = '#dd7184';
-        c.fill();
+        const radius = hazard.radius/2;
+        const armed = hazard.delay <= 0;
+        c.globalAlpha = armed ? .59 : .22;
+        c.fillStyle = '#a93553';
+        c.beginPath(); c.arc(x,y,radius,0,TAU); c.fill();
         c.globalAlpha = 1;
+        this.ring(c,x,y,radius+1,'#150e1a',.96);
+        if (!armed) c.setLineDash([3,2]);
+        this.ring(c,x,y,radius,warning,1);
+        if (!armed) c.setLineDash([]);
+        const remaining = clamp(hazard.delay/1.15,0,1);
+        c.strokeStyle = warning;
+        c.beginPath(); c.arc(x,y,radius*.67,-Math.PI/2,-Math.PI/2+TAU*(1-remaining)); c.stroke();
+        c.fillStyle = warning;
+        c.fillRect(x-2,y,5,1); c.fillRect(x,y-2,1,5);
       } else {
         if (hazard.delay>0) {
-          this.ring(c,x,y,5,contrast?'#ffeb82':'#ee83a5',.95);
-          c.strokeStyle=contrast?'#ffeb82':'#ee83a5';
+          this.ring(c,x,y,5,warning,1);
+          c.strokeStyle = warning;
+          c.setLineDash([4,2]);
           c.beginPath(); c.moveTo(x,y); c.lineTo(x+hazard.vx*.14,y+hazard.vy*.14); c.stroke();
+          c.setLineDash([]);
           continue;
         }
         c.fillStyle = '#452d45';
@@ -82,12 +97,13 @@ export class Renderer {
       if (e.site) {
         const x = Math.round(e.x/2);
         const y = Math.round(e.y/2);
-        this.glow(c,x,y-24,43,e.art === 'shrine' ? '#be6989' : '#62beab',e.used ? .08 : .18);
-        if (e.ritual && !e.used) this.ring(c,x,y,25,'#81ae9e',.46);
+        if (!reduced) this.glow(c,x,y-24,43,e.art==='shrine'?'#be6989':game.stage.color,e.used?.08:.22);
+        if (e.ritual && !e.used) this.ring(c,x,y,25,'#dabb89',contrast?.9:.64);
         c.drawImage(this.assets[e.art],x-56,y-83);
       } else this.actor(c,e,game,reduced);
     }
     for (const shot of game.shots.live) {
+      if (!this.visible(shot,cam,48)) continue;
       const x = shot.x/2;
       const y = shot.y/2;
       c.strokeStyle = shot.color;
@@ -101,13 +117,15 @@ export class Renderer {
       c.fillStyle='#f3a3b4'; c.fillRect(0,-4,3,9); c.fillStyle='#ffedcd'; c.fillRect(2,-3,1,4);
       c.restore();
     }
-    for (const effect of game.effects.live) this.drawEffect(c,effect,game.time,reduced,true);
+    for (const effect of game.effects.live) {
+      if (this.visible(effect,cam,2*effect.radius+40)) this.drawEffect(c,effect,game.time,reduced,true);
+    }
     const player = game.player;
     if (!reduced) {
-      for (let i=0;i<64;i++) {
+      for (let i=0;i<24;i++) {
         const x = ((i*161 + game.time*(i%3+3)) % 890);
         const y = (i*73)%590 + Math.sin(game.time+i)*6;
-        c.fillStyle = i%9 ? '#436e72' : '#83d2ba';
+        c.fillStyle = i%9 ? game.stage.color : '#bacad0';
         c.globalAlpha = .25 + .18*Math.sin(i+game.time*1.5);
         c.fillRect(Math.floor(x),Math.floor(y),i%9 ? 1 : 2,1);
       }
@@ -116,7 +134,7 @@ export class Renderer {
     c.restore();
     const vignette = c.createRadialGradient((player.x-cam.x)/2,(player.y-cam.y)/2,52,w/2,h/2,Math.max(w,h)*.64);
     vignette.addColorStop(0,'#040b1000');
-    vignette.addColorStop(1,contrast?'#040a1222':game.sanity<=55 && !reduced ? '#1b102cba' : '#040a12ac');
+    vignette.addColorStop(1,contrast||reduced?'#040a1222':game.sanity<=55 ? '#1b102c8c' : '#040a1266');
     c.fillStyle = vignette;
     c.fillRect(0,0,w,h);
     this.compass(c,game,cam);

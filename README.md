@@ -1,4 +1,4 @@
-# ELDRITCH-404 · v0.2.0
+# ELDRITCH-404 · v0.3.0
 
 Juego de acción roguelite y horror cósmico. La expedición inaugural en **Innsmouth Olvidada** dura cinco minutos hasta la llegada de la Sacristana de la Marea. Sobrevive, reúne fragmentos y derrota al jefe para obtener la credencial de veterano.
 
@@ -7,7 +7,7 @@ En **Historia** hay diez capítulos conectados. Una victoria abre la decisión d
 ## Jugar
 
 1. Extrae el ZIP y abre **ELDRITCH-404.html** con un navegador actual. El HTML incluye el arte, el audio se genera durante el juego y no requiere conexión.
-2. Pulsa **Comenzar expedición → Entrar en el muelle**. Elige **Modo libre** si quieres acceder antes a todos los mapas y personajes.
+2. Pulsa **Comenzar expedición → Entrar en el muelle**. En **Modos alternativos → Modo libre** puedes acceder desde el principio a todos los mapas y personajes. La sección **Campaña** permite volver a capítulos abiertos y consultar los finales descubiertos.
 3. Aprovecha las primeras oleadas para recoger fragmentos cerca de los enemigos. Las flechas en el borde del escenario señalan los rituales o al jefe.
 4. Cambia a dificultad **Historia** desde Opciones para reducir daño, velocidad y resistencia enemiga en la siguiente partida.
 
@@ -39,7 +39,7 @@ npm start
 
 `npm run build` actualiza el HTML autocontenido y construye `dist/` con la versión web y la caché offline. `npm start` sirve en `http://127.0.0.1:4040`. Para servir exactamente la compilación, usa `ELDRITCH_WEB_ROOT=dist node tools/serve.mjs` en Bash o asigna `$env:ELDRITCH_WEB_ROOT='dist'` en PowerShell y ejecuta `node tools/serve.mjs`.
 
-El juego carece de dependencias de ejecución. Para pruebas opcionales, instala `playwright` y `@napi-rs/canvas` como herramientas de desarrollo (`npm install --no-save playwright @napi-rs/canvas`), prepara Chromium con `npx playwright install chromium` y ejecuta `npm run test:browser` y `node tests/render.cjs`. `CHROMIUM_PATH` permite usar un Chromium instalado. Para regenerar PNG, usa `python3 tools/art.py` con Pillow.
+El juego carece de dependencias de ejecución. Para pruebas opcionales, instala `playwright` y `@napi-rs/canvas` como herramientas de desarrollo (`npm install --no-save playwright @napi-rs/canvas`), prepara Chromium con `npx playwright install chromium` y ejecuta `npm run test:browser`, `node tests/browser-campaign.cjs` y `node tests/render.cjs`. `CHROMIUM_PATH` permite usar un Chromium instalado. Para regenerar PNG, usa `python3 tools/art.py` con Pillow.
 
 ## Perfiles
 

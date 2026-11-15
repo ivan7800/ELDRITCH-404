@@ -62,6 +62,8 @@ La elección final abre una de tres parejas de resultados. Antes de confirmarla,
 
 Sprites dibujados a resolución baja y ampliados por vecino más cercano. Luz de farol, charcos y paredes de piedra sobre azul petróleo. Turquesa para botín, magenta rojizo para daño enemigo y oro para recompensas o navegación. El jefe debe tener silueta legible antes de ataques y detalles de animación. La primera versión incluye cuatro fotogramas por sujeto, cinco hitos, portada y sombreado local. El arte de producción requiere más detalle ambiental, animaciones diferenciadas en ataques y muerte y un atlas por escenario. Los cambios de cordura conservan contraste y pueden reducirse desde Opciones.
 
+En v0.3.0 el azul petróleo y el verde oscuro dominan el terreno. El hueso se reserva para el texto, el latón para rutas y objetivos, la menta para la acción principal y el rojo para el peligro. Las fichas usan la misma imagen de la arena que el combate. Los sellos usan contorno discontinuo y arco de carga, luego un borde continuo durante el impacto. Las señales permanecen en el modo de efectos reducidos.
+
 ## Dirección sonora
 
 Base de seno y triángulo en frecuencias bajas. La amenaza sustituye el pulso ambiental por un patrón corto e irregular. Golpes propios en registro medio, daño enemigo áspero, fragmentos altos y breves. Separar música y efectos en dos buses. Mantener una ruta visual para toda señal de peligro. Más adelante cada zona tendrá un motivo de tres notas, un instrumento propio y una firma que anticipe al jefe. Probar escucha con auriculares, altavoces y volumen bajo.

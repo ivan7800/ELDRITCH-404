@@ -1,5 +1,13 @@
 # Cambios
 
+## 0.3.0 · La costa de la bajamar
+
+- Portada con acceso prioritario a la decisión pendiente, la expedición suspendida o el siguiente capítulo. Campaña y modos alternativos tienen sus propios menús.
+- Fichas con vistas de las diez arenas, tiempo hasta el encuentro, investigador y pistas sobre el jefe. La bitácora explica qué capítulos están disponibles y conserva los finales descubiertos.
+- Contorno, progreso y centro visibles en sellos. Avisos de ataque y fase en el HUD, señal sonora, flecha de corriente en la Ciudad Sumergida y avisos de cambios del escenario.
+- Ajustes de contraste aplicados en el acto, controles en pantalla que siguen el idioma y ayudas que respetan el remapeo. El render omite efectos fuera de cámara y el HUD evita escrituras repetidas.
+- Compilación web y portátil regeneradas. Los perfiles y expediciones suspendidas conservan su formato.
+
 ## 0.2.0 · Las dos orillas
 
 - Campaña de diez capítulos, decisiones persistentes y seis finales.

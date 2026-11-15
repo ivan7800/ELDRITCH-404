@@ -70,8 +70,23 @@ const chapters = [
   [['Corazón del Caos','Heart of Chaos'],['El paso sólo permanecerá abierto mientras alguien recuerde sus dos orillas. Escoge quién conservará esa memoria.','The passage stays open only while someone remembers both shores. Choose who keeps that memory.'],['Vínculo','Link'],'#944a81',[1,1],['Corazón sin Dueño','Masterless Heart'],['Testigo Anterior','First Witness']]
 ];
 export const bossPatterns = ['tide','fan','cross','pursuit','shell','roots','clock','gates','sweep','spiral'];
+const approaches = [
+  ['La bajamar ha abierto el aljibe. Disparas automáticamente. Recoge fragmentos y sal de los círculos antes de que se cierren.', 'Low tide has opened the cistern. Attacks fire automatically. Collect shards and leave the circles before they close.'],
+  ['Sigue las lápidas sin nombre. El Fosero dispara en abanico: busca los huecos de la salva.', 'Follow the nameless graves. The Gravedigger fires in a fan: look for gaps in the volley.'],
+  ['La radio repite una nota del órgano. El Organista siembra sellos en cruz alrededor de tu posición.', 'The radio repeats an organ note. The Organist lays seals in a cross around your position.'],
+  ['La corriente te arrastra entre ruinas inundadas. La Viuda deja sellos en la dirección en que te mueves.', 'Currents pull you through flooded ruins. The Widow lays seals in the direction you move.'],
+  ['La piedra se pliega sobre sí misma. Los proyectiles de la Arquitecta nacen en un anillo alrededor de ella.', 'Stone folds in on itself. The Architect’s projectiles form a ring around her.'],
+  ['Los árboles conservan los nombres borrados. El Ciervo dibuja un cerco de sellos que se activan por turnos.', 'The trees keep erased names. The Stag draws a ring of seals that trigger in sequence.'],
+  ['Los relojes invierten proyectiles en vuelo. El Celador dispara por turnos: espera a ver los huecos.', 'The clocks reverse projectiles in flight. The Warden fires staggered volleys: watch for openings.'],
+  ['Busca el registro entre los estantes. La Archivera deja pasillos entre sus disparos.', 'Look for the register between the shelves. The Archivist leaves lanes between her shots.'],
+  ['Las copias han escrito sus nombres. El Custodio barre una franja horizontal: sal por arriba o por abajo.', 'The copies wrote their names. The Custodian sweeps a horizontal lane: escape above or below it.'],
+  ['Queda decidir qué memoria cruzará. El Testigo lanza una espiral: sigue los huecos entre proyectiles.', 'One memory will cross. The Witness fires a spiral: follow the gaps between projectiles.']
+];
+export function expeditionTime(stage, mode, length = .75) {
+  return Math.round(stage.duration * (mode === 'free' ? length : playModes[mode].length));
+}
 export const stages = chapters.map(([name, story, feature, color, drift, optional, principal], index) => ({
-  id: index, name, story, feature, color, drift, duration: duration + index * 8,
+  id: index, name, story, brief: approaches[index], feature, color, drift, duration: duration + index * 8,
   main: index === 0 ? 'boss' : 'warden'+index, optional: 'champion'+index,
   pattern: bossPatterns[index], rivalPattern: bossPatterns[(index+4)%10],
   sites: index === 0 ? sites : sites.map((site,i) => ({
