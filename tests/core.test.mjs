@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Expedition } from '../src/simulation.mjs';
-import { arena, duration, step, weapons } from '../src/content.mjs';
+import { arena, duration, step, weapons, stages } from '../src/content.mjs';
 import { Pool, SpatialGrid } from '../src/math.mjs';
-import { fresh, save, load, key, record, validate } from '../src/storage.mjs';
+import { fresh, save, load, key, record, validate, suspend, restore } from '../src/storage.mjs';
 import { choose, plan } from './pilot.mjs';
 
 test('normalized diagonal movement, analog input and boundaries', () => {
@@ -113,6 +113,10 @@ test('boss spawns on cue, emits aimed seals and transitions at half health', () 
   g.update(step);
   assert.ok(g.boss.second);
   assert.ok(g.events.some(e=>e.type==='boss-phase'));
+  assert.equal(g.boss.action,'tell');
+  assert.equal(g.boss.attack,'seals');
+  assert.equal(g.boss.tellSecond,false);
+  assert.equal(g.hazards.live.filter(h=>h.kind==='seal').length,2);
 });
 test('spatial index resets and pools reuse resources at configured bounds', () => {
   const pool = new Pool(1);
@@ -162,3 +166,30 @@ for (const seed of [404,12,1997,1138]) {
     assert.ok(game.level>12);
   });
 }
+
+test('lost dispatch rewards once and survives a suspended run and profile validation', () => {
+  const game=new Expedition({stage:3,mode:'story',seed:321});
+  const site=stages[3].sites.find(item=>item.ritual==='signal');
+  game.player.x=site.x; game.player.y=site.y; game.player.hp-=22;
+  game.openRitual();
+  assert.equal(game.ritual,'signal');
+  game.resolveRitual(true);
+  assert.equal(game.player.hp,game.player.maxHp-4);
+  assert.equal(game.xp,9);
+  assert.equal(game.sanity,100-game.character.sanityCost);
+  assert.ok(game.usedSites.has('signal3'));
+  game.openRitual();
+  assert.equal(game.mode,'play');
+  const resumed=restore(JSON.parse(JSON.stringify(suspend(game))),Expedition);
+  assert.ok(resumed.usedSites.has('signal3'));
+  resumed.finish('lost');
+  const profile=fresh(); record(profile,resumed);
+  profile.progress.supplies = 1;
+  const restoredProfile = validate(JSON.parse(JSON.stringify(profile)));
+  assert.ok(restoredProfile.journal.includes('signal3'));
+  assert.equal(restoredProfile.progress.supplies,1);
+  assert.equal(validate({...profile,progress:{}}).progress.supplies,0);
+  const challenge = new Expedition({stage:3,mode:'challenge',seed:321});
+  Object.assign(challenge.player,{x:site.x,y:site.y});
+  assert.equal(challenge.nearestSite(),undefined);
+});

@@ -1,6 +1,6 @@
-# ELDRITCH-404 · v0.3.0
+# ELDRITCH-404 · v0.4.0
 
-Juego de acción roguelite y horror cósmico. La expedición inaugural en **Innsmouth Olvidada** dura cinco minutos hasta la llegada de la Sacristana de la Marea. Sobrevive, reúne fragmentos y derrota al jefe para obtener la credencial de veterano.
+Juego de acción roguelite y horror cósmico. La expedición inaugural en **Innsmouth Olvidada** incluye ayudas contextuales y dura cinco minutos hasta la llegada de la Sacristana de la Marea. Sobrevive, reúne fragmentos y derrota al jefe para obtener la credencial de veterano.
 
 En **Historia** hay diez capítulos conectados. Una victoria abre la decisión de ese capítulo y el siguiente mapa. Los rescates, las anclas y las marcas acumuladas cambian el epílogo. Puedes repetir capítulos para cambiar sus decisiones y conservar los finales descubiertos en el Cuaderno.
 
@@ -21,7 +21,11 @@ En **Historia** hay diez capítulos conectados. Una victoria abre la decisión d
 | Menús | Tab y Enter, flechas en botones | Cruceta/stick y A/B |
 | Elegir mejora | 1, 2 o 3, o Enter sobre la tarjeta | Cruceta/stick y A |
 
+**Registros perdidos.** En Historia, una señal ámbar marca un registro recuperable en cada mapa. Puedes leerlo en el Cuaderno de campo. Da 9 de experiencia y recupera hasta 18 de salud. La primera recuperación de cada capítulo añade suministros para la próxima expedición de Historia (+12 de salud inicial).
+
 **Evoluciones.** Escopeta III + Resina negra desbloquea Temporal de sal. Campana III + Salmo de lastre desbloquea Coro de los ahogados. Las recetas se consultan en el Cuaderno de campo. La evolución aparece al subir de nivel una vez reunidos sus requisitos.
+
+**Registros perdidos.** Cada capítulo tiene una anotación opcional en el escenario. Recuperarla da salud y experiencia y conserva el texto en el Cuaderno.
 
 **Archivo.** Las bajas y victorias dan sellos para mejoras permanentes. Cada mapa tiene tres reliquias recuperables. Puedes equipar una antes de empezar. Los jefes alternativos se eligen en la preparación de modos ajenos a Historia.
 

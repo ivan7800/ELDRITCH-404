@@ -3,7 +3,7 @@ import { Renderer } from './render.mjs';
 import { Input } from './input.mjs';
 import { Sound } from './audio.mjs';
 import { load, save, fresh, validate, record, key, suspendedKey, suspend, restore } from './storage.mjs';
-import { defaultKeys, defaultPad, weapons, upgrades, enemies, step, investigators, stages, playModes, relics, bestiary, expeditionTime } from './content.mjs';
+import { defaultKeys, defaultPad, weapons, upgrades, enemies, step, investigators, stages, playModes, relics, bestiary, bossTells, expeditionTime } from './content.mjs';
 import { archive, archiveCost, achievements, bonuses, buy, decisions, dispatches, endings, finalChoices, investigatorUnlocked, resolveStory, stageUnlocked } from './campaign.mjs';
 import { clamp } from './math.mjs';
 
@@ -37,6 +37,7 @@ const loc = pair => pair[profile.settings.language === 'es' ? 0 : 1];
 const timeLabel = n => Math.floor(n/60).toString().padStart(2,'0')+':'+(Math.floor(n)%60).toString().padStart(2,'0');
 const titles = { heal: ['Capilla sin nombre','Nameless Chapel'], blood: ['Altar de bajamar','Ebb-Tide Altar'], gather: ['Baliza del estuario','Estuary Beacon'],
   boss: enemies.boss.name, win: ['El sello de plomo','The Lead Seal'], tempest: weapons.tempest.name, choir: weapons.choir.name };
+for (const stage of stages) titles[stage.dispatch.id]=stage.name;
 const glyphs = {
   salt:'M3 13h7l9-7 2 3-10 7H4z M5 16l-1 4', bell:'M7 9a5 5 0 0110 0v5l2 3H5l2-3z M10 20h4 M12 2v2',
   blade:'M4 20l8-9 M9 7l8 8 M11 11l7-8 3 1-1 4-6 6', lantern:'M8 8h8l2 12H6z M10 8V5a2 2 0 014 0v3 M10 14l2-2 2 4-2 2z',
@@ -64,6 +65,7 @@ function show(name) {
   screen = name;
   app.classList.toggle('large',profile.settings.large);
   app.classList.toggle('contrast',profile.settings.contrast);
+  app.classList.toggle('reduced',profile.settings.reduced);
   document.documentElement.lang = profile.settings.language;
   overlay.className = name !== 'home' && name !== 'play' ? 'dim' : '';
   world.hidden = hud.hidden = !game || !['play','pause','options','level','ritual','result','abandon','chronicle','ending'].includes(name);
@@ -73,13 +75,13 @@ function show(name) {
       const suspended = hasSuspend();
       const chapter = pending ? stages[pending.stage] : nextChapter();
       const progress = tr('Capítulo ','Chapter ')+(chapter.id+1)+' / '+stages.length+' · '+loc(chapter.name);
-      overlay.innerHTML = '<section class="hero"><div class="title-copy"><img class="mark" src="assets/icon.png" alt=""><div class="eyebrow">'+tr('Archivo de la expedición','Expedition archive')+'</div><h1>ELDRITCH<span>404</span></h1><p class="lede">'+tr('La bajamar dejó al descubierto una puerta. Algo la está abriendo desde dentro.','Low tide uncovered a door. Something is opening it from within.')+'</p><div class="home-actions">'+
+      overlay.innerHTML = '<section class="hero"><div class="hero-art" aria-hidden="true"></div><div class="title-copy"><h1 class="visually-hidden">ELDRITCH-404</h1><div class="eyebrow">'+tr('Archivo de la expedición','Expedition archive')+'</div><p class="lede">'+tr('La bajamar dejó al descubierto una puerta. Algo la está abriendo desde dentro.','Low tide uncovered a door. Something is opening it from within.')+'</p><div class="home-actions">'+
         (pending?btn('chronicle',tr('Resolver decisión de campaña','Resolve story decision'),true):'')+
         (suspended?btn('restore',tr('Reanudar expedición guardada','Resume suspended run'),!pending):'')+
         btn('story-brief',storyLabel(),!pending&&!suspended)+
         btn('modes',tr('Modos alternativos','Other modes'))+btn('campaign',tr('Campaña','Campaign'))+
         btn('archive',tr('Archivo','Archive'))+btn('options',tr('Opciones','Settings'))+
-        '</div><p class="hero-footer">'+progress+' · v0.3.0</p></div></section>';
+        '</div><p class="hero-footer">'+progress+' · v0.4.0</p></div></section>';
       break;
     }
     case 'campaign':
@@ -146,6 +148,14 @@ function show(name) {
         }).join('')+'</div>',true);
       break;
     case 'ritual': {
+      if (game.ritual === 'signal') {
+        const found = profile.journal.includes(game.stage.dispatch.id);
+        overlay.innerHTML = panel(tr('Hallazgo','Discovery'),loc(game.stage.dispatch.name),'<p>'+loc(game.stage.dispatch.text)+'</p><p>'+
+          tr('Recuperas hasta 18 de salud y ganas 9 de experiencia.','Restore up to 18 health and gain 9 experience.')+
+          (found?'':' '+tr('El primer hallazgo da +12 de salud inicial en la próxima expedición de Historia.','Your first discovery grants +12 starting health on the next Story expedition.'))+'</p>'+
+          group(btn('ritual-no',tr('Marcharse','Leave'))+btn('ritual-yes',tr('Recuperar registro','Recover dispatch'),true)));
+        break;
+      }
       const flavor = {
         heal: tr('Quema el último cirio. Recuperas 42 de salud y 22 de cordura.','Burn the last candle. Restore 42 health and 22 sanity.'),
         blood: tr('Toca el filo. La mutación mejora daño, defensa o recogida según el investigador. Cuesta 48 de cordura y 2 de corrupción.','Touch the blade. Mutation improves damage, defence or pickup according to the investigator. Costs 48 sanity and 2 corruption.'),
@@ -171,7 +181,7 @@ function show(name) {
       const stats = profile.stats;
       overlay.innerHTML = panel(tr('Expediciones registradas','Recorded expeditions'),tr('Cuaderno de campo','Field journal'),
         statCards([[tr('Partidas','Runs'),stats.runs],[tr('Victorias','Victories'),stats.wins],[tr('Bajas','Kills'),stats.kills],[tr('Récord','Best'),timeLabel(stats.best)]])+
-        '<h3>'+tr('Hallazgos','Discoveries')+'</h3><p>'+(profile.journal.map(id=>loc(titles[id])).join(' · ') || tr('El cuaderno está en blanco.','The journal is blank.'))+'</p><p>'+tr('Evoluciones conocidas: Escopeta III + Resina negra → Temporal de sal. Campana III + Salmo de lastre → Coro de los ahogados.','Known evolutions: Shotgun III + Black Resin → Salt Tempest. Bell III + Ballast Psalm → Choir of the Drowned.')+'</p>'+
+        '<h3>'+tr('Hallazgos','Discoveries')+'</h3><p>'+(profile.journal.filter(id=>!id.startsWith('signal')).map(id=>loc(titles[id])).join(' · ') || tr('El cuaderno está en blanco.','The journal is blank.'))+'</p>'+profile.journal.filter(id=>id.startsWith('signal')).map(id=>'<p class="entry"><strong>'+loc(titles[id])+'</strong> · '+loc(stages[Number(id.slice(6))].dispatch.text)+'</p>').join('')+'<p>'+ tr('Evoluciones conocidas: Escopeta III + Resina negra → Temporal de sal. Campana III + Salmo de lastre → Coro de los ahogados.','Known evolutions: Shotgun III + Black Resin → Salt Tempest. Bell III + Ballast Psalm → Choir of the Drowned.')+'</p>'+
         group(btn('codex',tr('Bestiario, recetas y logros','Bestiary, recipes and achievements'),true)+btn('archive',tr('Volver','Back'))+btn('credits',tr('Créditos','Credits'))));
       break;
     }
@@ -236,6 +246,7 @@ function displayBrief() {
     '<p><strong>'+timeLabel(expeditionTime(stage,selected.mode,selected.length))+'</strong> · '+loc(boss.name)+'</p>'+
     '<p>'+loc(char.name)+' · '+loc(weapons[char.weapon].name)+'</p>'+
     (profile.stats.veteran&&!['free','challenge'].includes(selected.mode)?'<p class="tag">'+tr('Credencial de veterano activa · Botas I','Veteran credential active · Boots I')+'</p>':'')+
+    (story&&progress.supplies?'<p class="tag">'+tr('Suministros recuperados · +12 de salud inicial','Recovered supplies · +12 starting health')+'</p>':'')+
     '</div><img src="'+arenaArt(stage.id)+'" alt="" width="240" height="135"></div>'+
     group(btn('start',first?tr('Entrar en el muelle','Enter the quay'):tr('Entrar en expedición','Start expedition'),true)+
       (story?btn('toggle-loadout',showLoadout?tr('Ocultar preparación','Hide loadout'):tr('Cambiar preparación','Change loadout')):'')+
@@ -366,13 +377,14 @@ function updateHud() {
   }
   updateField('interaction',!near || screen!=='play','hidden');
   if (near) updateField('interact-button',promptFor('interact')+' · '+loc(near.label));
+  updateField('touch-interact',near?.ritual==='signal'?tr('Registro','Dispatch'):tr('Ritual','Ritual'));
   updateField('boss-bar',!boss,'hidden');
   if (boss) {
     updateField('boss-name',loc(enemies[boss.kind].name));
     updateField('boss-meter',boss.maxHp,'max');
     updateField('boss-meter',Math.max(0,boss.hp),'value');
     updateField('boss-warning',boss.action!=='tell','hidden');
-    updateField('boss-warning',tr('Ataque inminente','Incoming attack'));
+    if (boss.action==='tell') updateField('boss-warning',loc(bossTells[boss.attack ?? game.bossAttack(boss)]));
   }
   const fingerprint = Object.entries(game.arsenal).join('|');
   if (fingerprint !== lastArsenal) {
@@ -381,10 +393,10 @@ function updateHud() {
       '<span class="arm" title="'+loc(weapons[id].name)+'" style="color:'+weapons[id].color+'">'+icon(weapons[id].glyph)+(weapons[id].evolves?'★':'I'.repeat(rank))+'</span>').join('');
   }
 }
-function notice(value) {
+function notice(value, duration=2900) {
   $('notice').textContent = value;
   clearTimeout(noteTimer);
-  noteTimer = setTimeout(() => { $('notice').textContent = ''; },2900);
+  noteTimer = setTimeout(() => { $('notice').textContent = ''; },duration);
 }
 function persist() {
   if (!save(storage,profile)) notice(tr('No se pudo guardar el perfil.','The profile could not be saved.'));
@@ -398,11 +410,15 @@ async function start(replace = false) {
   const fair = selected.mode==='challenge' || selected.mode==='free';
   const stage = selected.mode==='free' || stageUnlocked(profile.progress,selected.stage) ? selected.stage : 0;
   const character = selected.mode==='free' || investigatorUnlocked(profile.progress,selected.character) ? selected.character : 0;
+  const perks = fair ? {} : bonuses(profile.progress);
+  const supplied = selected.mode==='story' && profile.progress.supplies>0;
+  if (supplied) perks.vitality = (perks.vitality ?? 0)+12;
   const expedition = new Expedition({...selected,stage,character, difficulty:selected.mode==='challenge'?'standard':profile.settings.difficulty, veteran:!fair&&profile.stats.veteran,
-    perks:fair?{}:bonuses(profile.progress), openArsenal: selected.mode==='free'?9:stage,
+    perks, openArsenal: selected.mode==='free'?9:stage, guide:!profile.progress.clears.includes(0) && stage===0 && selected.mode==='story',
     ...(testClock || selected.mode==='challenge'?{seed:404+stage*17}:{})});
   if (replace) storage.removeItem(suspendedKey);
   enter(expedition);
+  if (supplied) { profile.progress.supplies--; persist(); }
 }
 function enter(expedition) {
   samples.length = 0;
@@ -500,7 +516,7 @@ async function action(id,value) {
       profile.settings.keys={...defaultKeys}; profile.settings.pad={...defaultPad}; persist(); show('options'); break;
     case 'choose': if (game.choose(value)) { pending={}; show('play'); } break;
     case 'ritual-yes':
-    case 'ritual-no': game.resolveRitual(id === 'ritual-yes'); pending={}; show('play'); break;
+    case 'ritual-no': game.resolveRitual(id === 'ritual-yes'); pending={}; show('play'); syncScreen(); break;
     case 'interact':
       if (screen !== 'play') break;
       game.openRitual();
@@ -607,6 +623,7 @@ app.addEventListener('change',async e => {
     }
     app.classList.toggle('large',profile.settings.large);
     app.classList.toggle('contrast',profile.settings.contrast);
+    app.classList.toggle('reduced',profile.settings.reduced);
   }
   if (e.target.id === 'profile-file' && e.target.files[0]) {
     try {
@@ -661,12 +678,38 @@ function frame(now) {
     }
   }
   drawnScreen = screen;
-  sound.score(screen === 'play' ? game.phase() : screen === 'result' && game.mode === 'won' ? 'victory' : 'low',game?.stage.id ?? 0);
+  const active = ['play','level','ritual','pause'].includes(screen) && game;
+  const victory = screen==='result' && game?.mode==='won';
+  sound.score(active ? game.phase() : victory ? 'victory' : 'menu',active || victory ? game.stage.id : 0,
+    active ? game.sanity : 100,!!(active && game.boss?.second));
   requestAnimationFrame(frame);
 }
 function syncScreen() {
   for (const event of game.events.splice(0)) {
     sound.event(event.type,event.value);
+    if (event.type === 'guide') {
+      const touch = matchMedia('(pointer: coarse)').matches;
+      const controls = ['up','left','down','right'].map(id=>keyLabel(profile.settings.keys[id])).join('/');
+      const move = touch || padConnected ? tr('Usa el stick','Use the stick') : controls;
+      const dash = touch ? tr('Esquiva','Dodge') : promptFor('dash');
+      const interact = touch ? tr('Ritual','Ritual') : promptFor('interact');
+      const guide = {
+        move: move+' · '+tr('Muévete. Disparas automáticamente.','Move. Attacks fire automatically.'),
+        fragments: tr('Acércate a los fragmentos para elegir mejoras.','Move near shards to earn upgrades.'),
+        dash: dash+' · '+tr('Pruébala para esquivar y cruzar un grupo.','Try dodging through a group.'),
+        ritual: interact+' · '+tr('Úsalo junto a la capilla o la baliza.','Use it next to the chapel or beacon.')
+      };
+      notice(guide[event.value],4800);
+    }
+    if (event.type==='discovery') {
+      const id = game.stage.dispatch.id;
+      if (!profile.journal.includes(id)) {
+        profile.journal.push(id);
+        profile.progress.supplies++;
+        notice(tr('Registro recuperado · Suministros para la próxima expedición','Dispatch recovered · Supplies for the next expedition'));
+        persist();
+      } else notice(tr('Registro recuperado','Dispatch recovered'));
+    }
     if (event.type === 'boss') notice(loc(enemies[game.bossId].name));
     if (event.type === 'landmark' && !game.boss) {
       const cue = event.value===6 ? tr('Los proyectiles invierten su curso','Projectiles reverse course') :

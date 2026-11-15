@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(process.cwd(),process.env.ELDRITCH_WEB_ROOT || '.');
 const port = process.env.PORT ? Number(process.env.PORT) : 4040;
 const types = { '.html':'text/html; charset=utf-8', '.css':'text/css; charset=utf-8', '.js':'text/javascript; charset=utf-8',
-  '.mjs':'text/javascript; charset=utf-8', '.png':'image/png', '.webmanifest':'application/manifest+json' };
+  '.mjs':'text/javascript; charset=utf-8', '.png':'image/png', '.webp':'image/webp', '.webmanifest':'application/manifest+json' };
 export const server = createServer(async (req,res) => {
   try {
     const pathname = decodeURIComponent(new URL(req.url,'http://localhost').pathname);

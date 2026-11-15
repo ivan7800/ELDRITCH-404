@@ -1,5 +1,14 @@
 # Cambios
 
+## 0.4.0 · El registro de la bajamar
+
+- Nueva portada cinematográfica original, optimizada y disponible también en el HTML portátil. Niebla animada con ajuste para reducir movimiento.
+- Música original de sintetizadores con un motivo por capítulo, pulsos de tensión para mareas y jefes, variación de segunda fase y disonancia cuando baja la cordura. Sigue los controles separados de música y efectos.
+- Nuevos detalles ambientales y animación de entrada, carga y segunda fase de jefes. Las señales de peligro mantienen su contraste.
+- Guía contextual durante la primera expedición de Historia y un registro perdido opcional en cada capítulo. Cada registro cura, concede experiencia y añade una nota al cuaderno. El primer hallazgo de cada capítulo da +12 de salud inicial en la siguiente expedición de Historia.
+- La PWA instala cada versión como un conjunto y permite volver al juego sin conexión. El HTML portátil sigue disponible en su propia ruta.
+
+
 ## 0.3.0 · La costa de la bajamar
 
 - Portada con acceso prioritario a la decisión pendiente, la expedición suspendida o el siguiente capítulo. Campaña y modos alternativos tienen sus propios menús.

@@ -38,6 +38,7 @@ export class Renderer {
     c.drawImage(backdrop, cx, cy, w, h, 0, 0, w, h);
     c.save();
     c.translate(-cx, -cy);
+    if (!reduced) this.ambience(c,game,cam);
 
     for (const effect of game.effects.live) {
       if (this.visible(effect,cam,2*effect.radius+40)) this.drawEffect(c,effect,game.time,reduced,false);
@@ -90,7 +91,7 @@ export class Renderer {
       c.fillStyle = '#e7fedd'; c.fillRect(x-1,y-2,1,2);
     }
     const subjects = [
-      ...game.stage.sites.map(site => ({ ...site, site: true, used: game.usedSites.has(site.ritual) })),
+      ...game.stage.sites.map(site => ({ ...site, site: true, used: !game.siteAvailable(site) })),
       ...game.enemies, { ...game.player, kind: 'player' }
     ].filter(e => this.visible(e,cam,e.site ? 150 : 85)).sort((a,b) => a.y-b.y);
     for (const e of subjects) {
@@ -100,6 +101,10 @@ export class Renderer {
         if (!reduced) this.glow(c,x,y-24,43,e.art==='shrine'?'#be6989':game.stage.color,e.used?.08:.22);
         if (e.ritual && !e.used) this.ring(c,x,y,25,'#dabb89',contrast?.9:.64);
         c.drawImage(this.assets[e.art],x-56,y-83);
+        if(e.ritual==='signal'&&!e.used) {
+          c.fillStyle='#e1bb88'; c.fillRect(x-5,y-31,10,7);
+          c.fillStyle='#1a2c33'; c.fillRect(x-3,y-29,6,1);
+        }
       } else this.actor(c,e,game,reduced);
     }
     for (const shot of game.shots.live) {
@@ -140,6 +145,45 @@ export class Renderer {
     this.compass(c,game,cam);
     return cam;
   }
+  ambience(c,game,cam) {
+    const stage = game.stage.id;
+    const t = game.time;
+    const palette = ['#95c1b8','#bed49a','#deab76','#83c8e1','#bb9ccc','#a5bb85','#a3aacf','#d6b190','#d4ad80','#dca1ce'];
+    c.save();
+    c.fillStyle = c.strokeStyle = palette[stage];
+    for (const [i,site] of game.stage.sites.entries()) {
+      if (!this.visible(site,cam,125)) continue;
+      const x = site.x/2, y = site.y/2;
+      const pulse = Math.sin(t*(.8+stage*.06)+i*2);
+      c.globalAlpha = .32+pulse*.14;
+      for (let j=0;j<4;j++) {
+        const dx = (j-1.5)*19, dy = (j%2)*14;
+        const size = 4+j;
+        if (stage===0 || stage===3) {
+          c.fillRect(x+dx+pulse*5,y+dy+12+j*7,9+pulse*5,1);
+          if (!stage) c.fillRect(x+dx,y+dy-27,2,3+pulse);
+        } else if (stage===1 || stage===2) {
+          const sway = Math.sin(t*3+j+i);
+          c.fillRect(x+dx,y-17-dy+sway,stage===1?1:2,stage===1?3:6);
+        } else if (stage===4 || stage===6 || stage===9) {
+          c.save();
+          c.translate(x+dx,y+dy-28);
+          c.rotate(t*(stage===6?-.6:.45)+j);
+          if (stage===4) c.strokeRect(-size,-size,2*size,2*size);
+          else {
+            c.beginPath(); c.arc(0,0,size,0,stage===6?TAU:TAU*.72); c.moveTo(0,0); c.lineTo(size,0); c.stroke();
+          }
+          c.restore();
+        } else if (stage===5) {
+          c.beginPath(); c.moveTo(x+dx,y+dy); c.quadraticCurveTo(x+dx+pulse*8,y-12,x+dx-5,y-18-dy); c.stroke();
+        } else {
+          const shift = stage===7 ? Math.sin(t+j)*5 : pulse*3;
+          c.fillRect(x+dx,y-20+dy+shift,stage===7?8:3,stage===7?2:5);
+        }
+      }
+    }
+    c.restore();
+  }
   visible(e,cam,pad) {
     return e.x > cam.x-pad && e.x < cam.x+cam.width+pad && e.y > cam.y-pad && e.y < cam.y+cam.height+pad;
   }
@@ -151,7 +195,7 @@ export class Renderer {
     const boss = !!def?.boss;
     const radius = boss ? 22 : e.kind === 'brute' ? 9 : 6.5;
     if (e.action === 'tell') {
-      if (boss) this.ring(c,x,y,24+8*Math.sin(Math.min(1,e.timer)*2.7),'#f18a95',.88);
+      if (boss) this.bossShape(c,x,y,e.attack ?? game.bossAttack(e),e.aim,25,'#ffcfaa',.96);
       else {
         c.save();
         c.translate(x,y); c.rotate(e.aim);
@@ -166,18 +210,27 @@ export class Renderer {
     }
     c.fillStyle = '#0810179f';
     c.beginPath(); c.ellipse(x,y,radius,Math.max(2,radius*.31),0,0,TAU); c.fill();
-    const frame = hero && !e.walk ? 0 : Math.floor(game.time*9 + (e.id ?? 0)%4) % 4;
+    const frame = hero && !e.walk ? 0 : Math.floor(game.time*(boss?(e.second?11:7):9) + (e.id ?? 0)%4) % 4;
     const size = hero ? 48 : boss ? 59 : e.kind === 'brute' ? 44 : 37;
     c.save();
-    c.translate(x,y+2);
+    const arrival = clamp((game.time-(e.spawnedAt ?? -1))/.65,0,1);
+    const entrance = boss && !reduced ? (1-arrival)*16 : 0;
+    c.translate(x,y+2-entrance+(boss&&!reduced?Math.sin(game.time*2.8+(e.id??0))*(e.second?3:2):0));
     c.scale((hero ? e.dx : e.facing) < 0 ? -1 : 1,1);
-    c.globalAlpha = e.kind === 'shade' ? .78 : 1;
+    c.globalAlpha = e.kind === 'shade' ? .78 : boss&&!reduced ? .72+arrival*.28 : 1;
     if (!reduced && (e.flash || (hero && e.hurt))) c.filter = hero ? 'brightness(1.3) saturate(0.4)' : 'brightness(1.65)';
     const castRow = hero?game.character.id : boss&&e.kind!=='boss' ? e.kind.startsWith('champion')?12+def.stage:21+def.stage : -1;
     const original = castRow<=0 || !this.assets.cast;
     const row = original ? rows.indexOf(boss?'boss':def?.sprite??e.kind) : castRow;
     c.drawImage(original?this.assets.sprites:this.assets.cast,frame*64,row*68,64,68,-Math.round(size/2),-size,size,size);
     c.restore();
+    if (boss && e.action!=='tell' && !reduced && arrival<1)
+      this.bossShape(c,x,y,def.pattern,0,27+arrival*12,'#b9eedb',.78*(1-arrival));
+    if (boss && e.second && e.action!=='tell') {
+      const phase = clamp((game.time-(e.phaseAt ?? -1))/.8,0,1);
+      if (phase<1 && !reduced) this.bossShape(c,x,y,def.pattern,e.aim,27+phase*30,'#ffadba',.9*(1-phase));
+      this.ring(c,x,y,24,'#ffadba',.58);
+    }
     if (def?.behavior) {
       c.fillStyle=def.color; c.fillRect(x-3,y-9,6,2);
       if (e.shield>game.time) this.ring(c,x,y-6,9,'#a6ffe1',.75);
@@ -187,6 +240,50 @@ export class Renderer {
       c.fillStyle = '#10171e'; c.fillRect(x-6,y-24,12,2);
       c.fillStyle = enemies[e.kind].color; c.fillRect(x-6,y-24,Math.ceil(12*e.hp/e.maxHp),1);
     }
+  }
+  bossShape(c,x,y,pattern,aim,r,color,alpha) {
+    c.save();
+    c.translate(x,y);
+    c.globalAlpha = alpha;
+    c.strokeStyle = color;
+    c.lineWidth = 1.5;
+    c.beginPath();
+    switch (pattern) {
+      case 'fan':
+      case 'pursuit':
+        c.rotate(aim);
+        c.moveTo(0,0); c.arc(0,0,r,pattern==='fan'?-.65:-.22,pattern==='fan'?.65:.22); c.closePath();
+        break;
+      case 'cross':
+      case 'seals':
+        for (let i=0;i<4;i++) {
+          c.moveTo(r-3,0); c.lineTo(r+4,0); c.moveTo(r,-4); c.lineTo(r,4); c.rotate(TAU/4);
+        }
+        break;
+      case 'sweep':
+      case 'gates':
+        for (const side of [-1,1]) {
+          if (pattern==='sweep') { c.moveTo(-r,side*9); c.lineTo(r,side*9); }
+          else { c.moveTo(side*(r-10),-r*.65); c.lineTo(side*r,0); c.lineTo(side*(r-10),r*.65); }
+        }
+        break;
+      case 'spiral':
+        for (let i=0;i<25;i++) {
+          const a = i*TAU/18, d = 5+(r-5)*i/24;
+          c.lineTo(Math.cos(a)*d,Math.sin(a)*d);
+        }
+        break;
+      default: {
+        const count = {clock:12,roots:6,shell:7}[pattern] ?? 10;
+        const outer = pattern==='roots' ? r+9 : r+5;
+        for (let i=0;i<count;i++) {
+          c.moveTo(r,0); c.lineTo(outer,0); c.rotate(TAU/count);
+        }
+        c.moveTo(r,0); c.arc(0,0,r,0,TAU);
+      }
+    }
+    c.stroke();
+    c.restore();
   }
   ring(c,x,y,r,color,alpha) {
     c.globalAlpha = alpha;
@@ -239,7 +336,7 @@ export class Renderer {
     }
   }
   compass(c,game,cam) {
-    const pending = game.stage.sites.filter(e => e.ritual && !game.usedSites.has(e.ritual));
+    const pending = game.stage.sites.filter(site => game.siteAvailable(site));
     const candidates = game.boss ? [game.boss] : pending;
     const w = this.canvas.width;
     const h = this.canvas.height;
@@ -249,7 +346,7 @@ export class Renderer {
       const y = clamp((item.y-cam.y)/2,31,h-30);
       const angle = Math.atan2((item.y-cam.y)/2-y,(item.x-cam.x)/2-x);
       c.save(); c.translate(x,y); c.rotate(angle);
-      c.fillStyle = game.boss || item.ritual === 'blood' ? '#f0a29c' : '#94d9c2';
+      c.fillStyle = game.boss || item.ritual === 'blood' ? '#f0a29c' : item.ritual==='signal'?'#e1bb88':'#94d9c2';
       c.beginPath(); c.moveTo(5,0); c.lineTo(-3,-4); c.lineTo(-2,0); c.lineTo(-3,4); c.fill();
       c.restore();
     }

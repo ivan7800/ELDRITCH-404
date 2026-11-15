@@ -28,7 +28,7 @@ export function validate(data) {
   for (const field of ['runs','wins','kills','best']) d.stats[field] = Math.floor(number(data.stats[field],0,Number.MAX_SAFE_INTEGER));
   d.stats.wins = Math.min(d.stats.wins,d.stats.runs);
   d.stats.veteran = data.stats.veteran === true && d.stats.wins > 0;
-  if (Array.isArray(data.journal)) d.journal = [...new Set(data.journal.filter(id => ['heal','gather','blood','boss','win','tempest','choir'].includes(id)))];
+  if (Array.isArray(data.journal)) d.journal = [...new Set(data.journal.filter(id => (['heal','gather','blood','boss','win','tempest','choir'].includes(id) || stages.some(stage=>id==='signal'+stage.id))))];
   if (data.last && ['won','lost','retired'].includes(data.last.mode)) {
     const { mode, time, kills, level } = data.last;
     d.last = { mode, time: number(time,0,86400), kills: number(kills,0,1000000), level: number(level,1,10000,1) };
@@ -45,6 +45,7 @@ export function validate(data) {
   progress.relics = ids(p.relics,id=>relics.some(r=>r.id===id));
   progress.endings = ids(p.endings,id=>Object.hasOwn(endings,id));
   progress.equipped = progress.relics.includes(p.equipped) ? p.equipped : '';
+  progress.supplies = Math.floor(number(p.supplies,0,stages.length));
   progress.credits = Math.floor(number(p.credits,0,1e7));
   for (const id of Object.keys(archive)) {
     const rank=Math.floor(number(p.tree?.[id],0,3));
@@ -121,7 +122,7 @@ export function restore(snapshot, Expedition) {
   game.bossId = Object.hasOwn(enemies,snapshot.bossId) && enemies[snapshot.bossId].boss ? snapshot.bossId : game.bossId;
   game.enemies = snapshot.enemies.slice(0,226).filter(e=>Object.hasOwn(enemies,e.kind)&&Number.isFinite(e.hp));
   game.boss = game.enemies.find(e=>e.id===snapshot.boss) ?? null;
-  game.usedSites = new Set(snapshot.usedSites.filter(id=>['heal','blood','gather'].includes(id)));
+  game.usedSites = new Set(snapshot.usedSites.filter(id=>['heal','blood','gather',game.stage.dispatch.id].includes(id)));
   game.defeatedKinds = new Set(snapshot.defeated.filter(id=>Object.hasOwn(enemies,id)));
   for (const id of ['shots','gems','effects','hazards']) game[id].live = snapshot.pools[id].slice(0,game[id].limit);
   return game;

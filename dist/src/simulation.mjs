@@ -2,8 +2,8 @@ import { arena, weapons, upgrades, enemies, stages, stageWaves, investigators, p
 import { clamp, distance2, angleTo, seeded, SpatialGrid, Pool } from './math.mjs';
 
 export class Expedition {
-  constructor({ seed = Date.now(), difficulty = 'standard', veteran = false, stage = 0, character = 0, mode, rival = false, length, perks = {}, openArsenal = stage } = {}) {
-    this.config = { seed, difficulty, veteran, stage, character, mode, rival, length, perks, openArsenal };
+  constructor({ seed = Date.now(), difficulty = 'standard', veteran = false, stage = 0, character = 0, mode, rival = false, length, perks = {}, openArsenal = stage, guide = false } = {}) {
+    this.config = { seed, difficulty, veteran, stage, character, mode, rival, length, perks, openArsenal, guide };
     this.expanded = !!mode;
     this.playMode = Object.hasOwn(playModes, mode) ? mode : 'story';
     this.stage = stages[stage] ?? stages[0];
@@ -54,7 +54,13 @@ export class Expedition {
 
   update(dt, input = {}, view = { width: 560, height: 344 }) {
     if (this.mode !== 'play') return;
+    const previousTime = this.time;
     this.time += dt;
+    if (this.config.guide) {
+      for (const [at,cue] of [[.35,'move'],[4,'fragments'],[10,'dash'],[19,'ritual']]) {
+        if (previousTime < at && this.time >= at) this.emit('guide',cue);
+      }
+    }
     if (this.mod('renewal') && this.player.hp>0) this.player.hp = Math.min(this.player.maxHp,this.player.hp+dt*this.mod('renewal'));
     this.move(dt, input);
     if (input.interact) this.openRitual();
@@ -115,7 +121,10 @@ export class Expedition {
     p.walk = speed > 0;
   }
   nearestSite() {
-    return this.stage.sites.find(site => site.ritual && !this.usedSites.has(site.ritual) && distance2(site, this.player) <= 51 ** 2);
+    return this.stage.sites.find(site => this.siteAvailable(site) && distance2(site, this.player) <= 51 ** 2);
+  }
+  siteAvailable(site) {
+    return !!site.ritual && (site.ritual !== 'signal' || this.playMode === 'story') && !this.usedSites.has(site.id ?? site.ritual);
   }
   openRitual() {
     const site = this.nearestSite();
@@ -130,7 +139,12 @@ export class Expedition {
     this.mode = 'play';
     if (!accept) return;
     const p = this.player;
-    this.usedSites.add(ritual);
+    this.usedSites.add(ritual==='signal'?this.stage.dispatch.id:ritual);
+    if (ritual==='signal') {
+      p.hp=Math.min(p.maxHp,p.hp+18);
+      this.xp+=9;
+      this.emit('discovery',this.stage.id);
+    }
     if (ritual === 'heal') {
       p.hp = Math.min(p.maxHp, p.hp + (this.character.id===2?60:42));
       this.sanity = Math.min(100, this.sanity + 22);
@@ -153,7 +167,7 @@ export class Expedition {
       const p = this.player;
       const dx = p.x < arena.width / 2 ? 1 : -1;
       this.boss = this.spawn(this.bossId, p.x + dx * 215, p.y - 70);
-      this.emit('boss');
+      this.emit('boss',this.bossId);
     }
     if (this.time < this.nextWave || this.enemies.length >= 225) return;
     const waveTime = this.time * 300 / this.duration;
@@ -182,7 +196,7 @@ export class Expedition {
     const scale = (this.difficulty === 'story' ? .79 : 1) * (1 + this.corruption * .08) * (1+Math.min(12,this.clearCount)*.055);
     const hp = Math.round(def.hp * scale);
     const enemy = { id: this.id++, kind, x: clamp(x, 16, arena.width-16), y: clamp(y, 16, arena.height-16),
-      hp, maxHp: hp, timer: def.boss ? .7 : 1.15 + this.random()*2.8, action: 'move', aim: 0, sequence: 0,
+      hp, maxHp: hp, spawnedAt:this.time, timer: def.boss ? .7 : 1.15 + this.random()*2.8, action: 'move', aim: 0, sequence: 0,
       flash: 0, stun: 0, orbitHit: -1, facing: 1, phase: this.random()*Math.PI*2 };
     if (def.behavior) enemy.skillAt=this.time+enemy.timer+1.15;
     this.enemies.push(enemy);
@@ -328,21 +342,22 @@ export class Expedition {
     const phaseTwo = boss.hp <= boss.maxHp * .5;
     if (phaseTwo && !boss.second) {
       boss.second = true;
-      boss.action = 'move';
-      boss.timer = .14;
-      this.emit('boss-phase');
+      boss.phaseAt = this.time;
+      if (boss.action === 'move') boss.timer = Math.max(boss.timer,.55);
+      this.emit('boss-phase',boss.kind);
     }
     if (boss.action === 'move' && boss.timer <= 0) {
       boss.action = 'tell';
       boss.timer = (phaseTwo ? .81 : 1.15)*(this.playMode==='nightmare'?.81:1);
       boss.sequence++;
-      this.emit('boss-tell');
+      boss.tellSecond = phaseTwo;
+      boss.attack = this.bossAttack(boss);
+      this.emit('boss-tell',boss.attack);
       boss.aim = angleTo(boss, this.player);
       if (pattern!=='tide') {
-        const rivalPattern = enemies[boss.kind].stage===0?'cross':this.stage.pattern;
-        this.castBoss(boss,boss.kind===this.stage.optional && boss.sequence%3===0 && rivalPattern!=='tide'?rivalPattern:pattern,phaseTwo);
+        this.castBoss(boss,boss.attack,phaseTwo);
       }
-      else if (boss.sequence % 2 === 0) {
+      else if (boss.attack === 'seals') {
         const p = this.player;
         const count = phaseTwo ? 4 : 2;
         for (let n = 0; n < count; n++) {
@@ -354,13 +369,20 @@ export class Expedition {
     }
     if (boss.action === 'tell' && boss.timer <= 0) {
       if (pattern==='tide' && boss.sequence % 2 !== 0) {
-        const count = phaseTwo ? 18 : 11;
-        for (let i = 0; i < count; i++) this.hazard('bolt', boss.x, boss.y, boss.aim + (i+.5) * Math.PI*2/count, phaseTwo ? 151 : 117);
+        const second = boss.tellSecond ?? phaseTwo;
+        const count = second ? 18 : 11;
+        for (let i = 0; i < count; i++) this.hazard('bolt', boss.x, boss.y, boss.aim + (i+.5) * Math.PI*2/count, second ? 151 : 117);
       }
       boss.action = 'move';
       boss.timer = phaseTwo ? 1.65 : 2.35;
     }
     return boss.action === 'tell' || distance < 66 ? 0 : (phaseTwo ? 65 : 42);
+  }
+  bossAttack(boss) {
+    const pattern = enemies[boss.kind].pattern;
+    if (pattern === 'tide') return boss.sequence % 2 === 0 ? 'seals' : 'ring';
+    const alternate = this.stage.id === 0 ? 'cross' : this.stage.pattern;
+    return boss.kind === this.stage.optional && boss.sequence % 3 === 0 && alternate !== 'tide' ? alternate : pattern;
   }
   castBoss(boss, pattern, second) {
     const p = this.player, a = boss.aim, delay = boss.timer;

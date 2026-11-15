@@ -39,7 +39,7 @@ export const dispatches = [
 ];
 export function newProgress() {
   return { clears: [], choices: {}, endings: [], pending: null, credits: 0, tree: {}, relics: [], equipped: '',
-    bosses: [], bestiary: [], evolutionLog: [], records: {}, achievements: [], hunter: [] };
+    bosses: [], bestiary: [], evolutionLog: [], records: {}, achievements: [], hunter: [], supplies: 0 };
 }
 export function stageUnlocked(progress, stage) {
   return stage === 0 || progress.clears.includes(stage-1);

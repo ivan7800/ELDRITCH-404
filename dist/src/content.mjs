@@ -69,6 +69,24 @@ const chapters = [
   [['Trono de los Dioses Muertos','Throne of Dead Gods'],['Las copias saben lo que les ocurrirá si cierras el paso. Han escrito sus propios nombres.','The copies know what happens if you seal the passage. They have written their own names.'],['Coronas','Crowns'],'#997543',[-1,1],['Rey de la Inercia','King of Inertia'],['Custodio de la Corona','Crown Custodian']],
   [['Corazón del Caos','Heart of Chaos'],['El paso sólo permanecerá abierto mientras alguien recuerde sus dos orillas. Escoge quién conservará esa memoria.','The passage stays open only while someone remembers both shores. Choose who keeps that memory.'],['Vínculo','Link'],'#944a81',[1,1],['Corazón sin Dueño','Masterless Heart'],['Testigo Anterior','First Witness']]
 ];
+export const bossTells = {
+  ring:['Oleada circular','Circular surge'], seals:['Sellos de bajamar','Ebb-tide seals'],
+  fan:['Abanico frontal','Frontal fan'], cross:['Sellos en cruz','Cross seals'], pursuit:['Sellos de persecución','Pursuit seals'],
+  shell:['Anillo de proyectiles','Ring of projectiles'], roots:['Cerco de raíces','Ring of roots'], clock:['Salva escalonada','Staggered volley'],
+  gates:['Disparos laterales','Flanking shots'], sweep:['Barrido horizontal','Horizontal sweep'], spiral:['Salva en espiral','Spiral volley']
+};
+const fieldNotes = [
+  ['En el cuaderno del barquero, la primera víctima aún paga cada madrugada el viaje de vuelta.', 'In the ferryman’s ledger, the first victim still pays for the return trip every dawn.'],
+  ['Cada tumba tiene una llave. Las de los niños abren la cancela desde dentro.', 'Every grave has a key. The children’s unlock the gate from the inside.'],
+  ['Falta un tubo en el órgano. Desde el confesionario llega exactamente su nota.', 'One pipe is missing from the organ. Its note carries from the confessional.'],
+  ['La boya marca siete metros de profundidad. El cabo lleva una hora cayendo.', 'The buoy reads seven metres deep. The line has been falling for an hour.'],
+  ['La escalera anotada en este plano empieza en el piso de arriba y termina en la misma habitación.', 'The staircase drawn on this plan starts upstairs and ends in the same room.'],
+  ['La guardabosques contó los anillos del tocón. El más reciente deja sitio para otra inicial.', 'The ranger counted the stump’s rings. The latest leaves room for another initial.'],
+  ['El reloj del pabellón se retrasa un minuto cada vez que el enfermero cruza el pasillo.', 'The ward clock loses a minute every time the nurse crosses the corridor.'],
+  ['El libro de préstamos registra tu devolución. Buscas tu firma al pie y la tinta sigue húmeda.', 'The ledger records your return. You find your signature at the bottom, still wet with ink.'],
+  ['En el interior de la corona alguien grabó los nombres de quienes renunciaron al trono.', 'Someone engraved the names of those who refused the throne inside the crown.'],
+  ['A ambos lados del papel hay manchas de agua. Al secarse, sólo queda tu nombre en una cara.', 'Both sides of the paper are water-stained. Once dry, your name remains on just one side.']
+];
 export const bossPatterns = ['tide','fan','cross','pursuit','shell','roots','clock','gates','sweep','spiral'];
 const approaches = [
   ['La bajamar ha abierto el aljibe. Disparas automáticamente. Recoge fragmentos y sal de los círculos antes de que se cierren.', 'Low tide has opened the cistern. Attacks fire automatically. Collect shards and leave the circles before they close.'],
@@ -89,10 +107,11 @@ export const stages = chapters.map(([name, story, feature, color, drift, optiona
   id: index, name, story, brief: approaches[index], feature, color, drift, duration: duration + index * 8,
   main: index === 0 ? 'boss' : 'warden'+index, optional: 'champion'+index,
   pattern: bossPatterns[index], rivalPattern: bossPatterns[(index+4)%10],
-  sites: index === 0 ? sites : sites.map((site,i) => ({
+  dispatch: {id:'signal'+index, name:['Registro perdido','Lost dispatch'], text:fieldNotes[index]},
+  sites: (index === 0 ? sites : sites.map((site,i) => ({
     ...site, x: site.x + ((index*97+i*83)%171)-85, y: site.y + ((index*53+i*71)%141)-70,
     label: i === 0 ? feature : site.label
-  }))
+  }))).map((site,i) => i === 4 ? {...site, ritual:'signal', id:'signal'+index, label:['Registro perdido','Lost dispatch']} : site)
 }));
 for (const stage of stages) {
   const i = stage.id;
