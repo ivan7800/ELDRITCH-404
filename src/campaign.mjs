@@ -1,4 +1,4 @@
-import { enemies, investigators, relics, stages, weapons } from './content.mjs';
+import { enemies, expeditionOaths, investigators, relics, stages, weapons } from './content.mjs';
 
 export const archive = {
   vitality: {name:['Enfermería','Infirmary'],desc:['+8 de salud inicial por grado.','+8 starting health per rank.']},
@@ -25,6 +25,14 @@ export const decisions = {
   anchor: ['Clavar un ancla entre orillas','Drive an anchor between shores'],
   mark: ['Conservar la mutación en el cuaderno','Record the mutation in the journal']
 };
+export const consequences = {
+  save: {perks:{vitality:8}, text:['Los rescatados dejan vendas en el siguiente refugio. +8 de salud inicial.',
+    'The rescued leave dressings at the next shelter. +8 starting health.']},
+  anchor: {perks:{guard:.06}, text:['El ancla amortigua los golpes en la siguiente expedición. −6 % de daño recibido.',
+    'The anchor softens blows on the next expedition. −6% incoming damage.']},
+  mark: {perks:{power:.08,sanity:-12}, text:['La marca fortalece las armas en la siguiente expedición. +8 % de daño y −12 de cordura inicial.',
+    'The mark strengthens your weapons on the next expedition. +8% damage and −12 starting sanity.']}
+};
 export const dispatches = [
   ['La operadora pide saber si hay heridos. Detrás de ti, alguien responde con tu voz.','The wireless operator asks whether anyone is hurt. Behind you, someone answers in your voice.'],
   ['El hombre a quien pertenece la última firma no quiere que la borres. Es el único lugar donde figura su nombre.','The man who signed last asks you not to erase it. It is the only place his name appears.'],
@@ -39,7 +47,7 @@ export const dispatches = [
 ];
 export function newProgress() {
   return { clears: [], choices: {}, endings: [], pending: null, credits: 0, tree: {}, relics: [], equipped: '',
-    bosses: [], bestiary: [], evolutionLog: [], records: {}, achievements: [], hunter: [], supplies: 0 };
+    bosses: [], bestiary: [], evolutionLog: [], records: {}, achievements: [], hunter: [], supplies: 0, oaths: {} };
 }
 export function stageUnlocked(progress, stage) {
   return stage === 0 || progress.clears.includes(stage-1);
@@ -57,12 +65,14 @@ export function buy(progress, id) {
   progress.tree[id] = rank + 1;
   return true;
 }
-export function bonuses(progress) {
+export function bonuses(progress, storyStage) {
   const values = {vitality:0,speed:0,power:0,reach:0,guard:0};
   const scale = {vitality:8,speed:.04,power:.06,reach:8,guard:.04};
   for (const id of Object.keys(values)) values[id] = (progress.tree[id] ?? 0)*scale[id];
   const relic = relics.find(item=>item.id===progress.equipped && progress.relics.includes(item.id));
   if (relic) values[relic.stat] += relic.value;
+  const consequence = consequences[progress.choices?.[storyStage-1]];
+  for (const [id,value] of Object.entries(consequence?.perks ?? {})) values[id] = (values[id] ?? 0)+value;
   return values;
 }
 export const achievements = [];
@@ -104,7 +114,14 @@ export function settle(progress, game) {
   }
   if (won && game.playMode === 'story' && game.bossId === game.stage.main) {
     progress.clears = [...new Set([...progress.clears,game.stage.id])];
-    progress.pending = {stage:game.stage.id,corruption:game.corruption};
+    if (game.oath) {
+      const completed = progress.oaths[game.oath] ??= [];
+      if (!completed.includes(game.stage.id)) {
+        completed.push(game.stage.id);
+        progress.credits += expeditionOaths[game.oath].reward;
+        game.oathReward = expeditionOaths[game.oath].reward;
+      }
+    } else progress.pending = {stage:game.stage.id,corruption:game.corruption};
   }
   refreshAchievements(progress);
 }

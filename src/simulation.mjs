@@ -1,16 +1,17 @@
-import { arena, weapons, upgrades, enemies, stages, stageWaves, investigators, playModes, expeditionTime } from './content.mjs';
+import { arena, weapons, upgrades, enemies, stages, stageWaves, investigators, playModes, expeditionTime, expeditionOaths, signatures } from './content.mjs';
 import { clamp, distance2, angleTo, seeded, SpatialGrid, Pool } from './math.mjs';
 
 export class Expedition {
-  constructor({ seed = Date.now(), difficulty = 'standard', veteran = false, stage = 0, character = 0, mode, rival = false, length, perks = {}, openArsenal = stage, guide = false } = {}) {
-    this.config = { seed, difficulty, veteran, stage, character, mode, rival, length, perks, openArsenal, guide };
+  constructor({ seed = Date.now(), difficulty = 'standard', veteran = false, stage = 0, character = 0, mode, rival = false, length, perks = {}, openArsenal = stage, guide = false, oath = '' } = {}) {
+    this.oath = mode==='story' && Object.hasOwn(expeditionOaths,oath) ? oath : '';
+    this.config = { seed, difficulty, veteran, stage, character, mode, rival, length, perks, openArsenal, guide, oath:this.oath };
     this.expanded = !!mode;
     this.playMode = Object.hasOwn(playModes, mode) ? mode : 'story';
     this.stage = stages[stage] ?? stages[0];
     this.character = investigators[character] ?? investigators[0];
     this.waveTable = stageWaves(this.stage);
     this.bossId = rival ? this.stage.optional : this.stage.main;
-    this.duration = expeditionTime(this.stage,this.playMode,length ?? .75);
+    this.duration = expeditionTime(this.stage,this.playMode,length ?? .75,this.oath);
     this.bossAt = this.duration;
     this.clearCount = 0;
     this.perks = this.playMode === 'challenge' ? {} : perks;
@@ -24,7 +25,7 @@ export class Expedition {
     const hp = this.character.hp + (this.perks.vitality ?? 0);
     this.player = { x: 864, y: 637, hp, maxHp: hp, dx: 1, dy: 0, hurt: 0, dash: 0, dashCooldown: 0 };
     this.difficulty = difficulty;
-    this.sanity = 100 - this.character.sanityCost;
+    this.sanity = clamp(100-this.character.sanityCost+(this.perks.sanity ?? 0),0,expeditionOaths[this.oath]?.sanity ?? 100);
     this.corruption = this.playMode === 'nightmare' ? 3 : 0;
     this.mutation = false;
     this.arsenal = { [this.character.weapon]: 1 };
@@ -134,7 +135,8 @@ export class Expedition {
     return this.stage.sites.find(site => this.siteAvailable(site) && distance2(site, this.player) <= 51 ** 2);
   }
   siteAvailable(site) {
-    return !!site.ritual && (site.ritual !== 'signal' || this.playMode === 'story') && !this.usedSites.has(site.id ?? site.ritual);
+    return !!site.ritual && (site.ritual !== 'signal' || this.playMode === 'story') &&
+      !(site.ritual==='heal' && expeditionOaths[this.oath]?.closeChapel) && !this.usedSites.has(site.id ?? site.ritual);
   }
   openRitual() {
     const site = this.nearestSite();
@@ -183,8 +185,10 @@ export class Expedition {
     const waveTime = this.time * 300 / this.duration;
     const wave = this.waveTable.findLast(item => waveTime >= item.at) ?? this.waveTable[0];
     const opening = this.harbourStory && this.nextWave<1;
-    this.nextWave = this.time + wave.gap*(this.playMode==='nightmare'?.78:1);
-    let count = this.boss ? 1 : waveTime < 24 ? 2 : waveTime < 94 ? 3 : 4;
+    const breakInWaves = this.config.mode==='story' && !this.boss && this.stage.breather;
+    const easing = breakInWaves && waveTime>=breakInWaves.from && waveTime<breakInWaves.to ? breakInWaves : null;
+    this.nextWave = this.time + wave.gap*(this.playMode==='nightmare'?.78:easing?.gap ?? 1);
+    let count = this.boss ? 1 : waveTime < 24 ? 2 : waveTime < 94 ? 3 : (easing?.max ?? 4);
     if (this.playMode==='nightmare' || this.clearCount>=2) count++;
     if (this.corruption && this.random() < this.corruption * .19) count++;
     for (let i = 0; i < count && this.enemies.length<225; i++) {
@@ -220,8 +224,10 @@ export class Expedition {
     this.emit('landmark',i);
     const p = this.player;
     if (i===6) {
-      this.hazards.live.forEach(h=>{h.vx *= -.8; h.vy *= -.8;});
-      this.effect('ring',p.x,p.y,110,'#b3a5ff',.8);
+      this.effect('ring',p.x,p.y,110,'#b3a5ff',1.05);
+      for (const hazard of this.hazards.live) {
+        if (hazard.kind==='bolt' && hazard.delay<=0 && hazard.life>1.05) hazard.reverseAt=this.time+.95;
+      }
       return;
     }
     if (i===7) {
@@ -326,8 +332,12 @@ export class Expedition {
       case 'artillery':
       case 'astral':
         if (distance<188 && this.hazards.live.length<48) {
-          const volley = Math.min(2,style);
-          for (let n=0;n<=volley;n++) this.hazard('bolt',enemy.x,enemy.y,aim+(n-volley/2)*.34,112+style*9,.58+n*.09);
+          const occupied = this.config.mode==='story' ? this.hazards.live.filter(hazard=>hazard.kind==='bolt' &&
+            distance2(hazard,player)<200**2).length : 0;
+          const volley = Math.min(3,style+1,Math.max(0,10-occupied));
+          for (let n=0;n<volley;n++) {
+            this.hazard('bolt',enemy.x,enemy.y,aim+(n-(volley-1)/2)*.34,112+style*9,.58+n*.09);
+          }
         }
         break;
       case 'support': {
@@ -351,10 +361,12 @@ export class Expedition {
   bossPattern(boss, distance) {
     const pattern = enemies[boss.kind].pattern;
     const phaseTwo = boss.hp <= boss.maxHp * .5;
+    const signatureReady = this.config.mode==='story' && boss.kind===this.stage.main &&
+      this.stage.signature && !boss.didSignature;
     if (phaseTwo && !boss.second) {
       boss.second = true;
       boss.phaseAt = this.time;
-      if (boss.action === 'move') boss.timer = Math.max(boss.timer,.55);
+      if (boss.action === 'move') boss.timer = signatureReady ? .55 : Math.max(boss.timer,.55);
       this.emit('boss-phase',boss.kind);
     }
     if (boss.action === 'move' && boss.timer <= 0) {
@@ -365,7 +377,11 @@ export class Expedition {
       boss.attack = this.bossAttack(boss);
       this.emit('boss-tell',boss.attack);
       boss.aim = angleTo(boss, this.player);
-      if (pattern!=='tide') {
+      if (Object.hasOwn(signatures,boss.attack)) {
+        boss.didSignature = true;
+        this.castSignature(boss,signatures[boss.attack]);
+      }
+      else if (pattern!=='tide') {
         this.castBoss(boss,boss.attack,phaseTwo);
       }
       else if (boss.attack === 'surge') {
@@ -400,7 +416,7 @@ export class Expedition {
         for (let i = 0; i < count; i++) this.hazard('bolt', boss.x, boss.y, boss.aim + (i+.5) * Math.PI*2/count, second ? 151 : 117);
       }
       boss.action = 'move';
-      boss.timer = phaseTwo ? 1.65 : 2.35;
+      boss.timer = phaseTwo ? (signatureReady && !boss.didSignature ? .55 : 1.65) : 2.35;
     }
     return boss.action === 'tell' || distance < 66 ? 0 : (phaseTwo ? 65 : 42);
   }
@@ -410,8 +426,22 @@ export class Expedition {
       if (this.harbourStory && boss.kind==='boss' && boss.second && boss.tellSecond && (!boss.didSurge || boss.sequence%3===0)) return 'surge';
       return boss.sequence % 2 === 0 ? 'seals' : 'ring';
     }
+    if (this.config.mode==='story' && boss.kind===this.stage.main && this.stage.signature && boss.tellSecond && !boss.didSignature)
+      return this.stage.signature;
     const alternate = this.stage.id === 0 ? 'cross' : this.stage.pattern;
     return boss.kind === this.stage.optional && boss.sequence % 3 === 0 && alternate !== 'tide' ? alternate : pattern;
+  }
+  castSignature(boss, signature) {
+    const p = this.player, delay = boss.timer+.25;
+    for (const [x,y,offset] of signature.seals ?? []) {
+      this.hazard('seal',p.x+x,p.y+y,0,0,delay+offset);
+    }
+    for (const [x,y,angle,offset] of signature.lanes ?? []) {
+      this.hazard('bolt',p.x+x,p.y+y,angle,121,delay+offset);
+    }
+    for (const [angle,offset] of signature.volley ?? []) {
+      this.hazard('bolt',boss.x,boss.y,boss.aim+angle,126,delay+offset);
+    }
   }
   castBoss(boss, pattern, second) {
     const p = this.player, a = boss.aim, delay = boss.timer;
@@ -432,12 +462,15 @@ export class Expedition {
     }
   }
   hazard(kind, x, y, angle, speed, delay = 0) {
-    this.hazards.add({ kind, x, y, vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed, delay,
+    this.hazards.add({ kind, x, y, reverseAt:0, vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed, delay,
       life: kind === 'seal' ? delay+.25 : 4, radius: kind === 'seal' ? 28 : 6 });
   }
   updateHazards(dt) {
     for (let i = this.hazards.live.length - 1; i >= 0; i--) {
       const h = this.hazards.live[i];
+      if (h.reverseAt && this.time>=h.reverseAt) {
+        h.reverseAt=0; h.vx *= -.8; h.vy *= -.8;
+      }
       h.life -= dt;
       h.delay -= dt;
       if (h.delay<=0) { h.x += h.vx * dt; h.y += h.vy * dt; }
@@ -741,7 +774,17 @@ export class Expedition {
         this.choices.push(...candidates.splice(Math.floor(this.random() * candidates.length), 1));
       }
       if (!this.choices.length || (this.player.hp < this.player.maxHp * .55 && this.choices.length < 3)) this.choices.push('patch');
-      if (this.level % 4 === 0 && this.choices.length === 3 && this.player.hp < this.player.maxHp*.7) this.choices[2] = 'patch';
+      const focusedRun = this.config.mode==='story' && this.stage.id>0;
+      if (focusedRun && !this.choices.some(id=>this.arsenal[id] || weapons[id]?.evolves)) {
+        const ownedUpgrade = owned.find(id=>this.arsenal[id]<3 && !weapons[id].evolves);
+        if (ownedUpgrade) this.choices[0] = ownedUpgrade;
+      }
+      const health = this.player.hp/this.player.maxHp;
+      const critical = focusedRun && health<.35;
+      if (this.choices.length===3 && (critical || (this.level%4===0 && health<.7))) {
+        const replace = this.choices.findLastIndex(id=>!weapons[id]?.evolves);
+        if (replace>=0) this.choices[replace] = 'patch';
+      }
     }
     this.mode = 'level';
     this.emit('level');

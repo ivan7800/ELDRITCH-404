@@ -1,3 +1,4 @@
+import { signatures } from './content.mjs';
 const roots = [55,49,58.27,43.65,61.74,46.25,51.91,41.2,65.41,73.42];
 const bassline = [0,0,3,0,7,0,5,3,0,-2,3,0,5,3,0,-2];
 const intervals = [0,2,-2,5,3,-3,7,-5,4,-4];
@@ -87,6 +88,12 @@ export class Sound {
     const cue = type === 'fire' ? arms[variant]??fallback : cues[type];
     if (cue) this.tone(...cue,this.effects);
     if (type==='boss-tell' && variant==='surge') this.tone(88,44,.46,.17,'triangle',this.effects,.12);
+    const signature = type==='boss-tell' && signatures[variant];
+    if (signature) {
+      const index = Object.keys(signatures).indexOf(variant);
+      this.tone(114+index*13,46+index*3,.65,.1,signature.seals?'triangle':'sine',this.effects,.08);
+    }
+    if (type==='landmark' && variant===6) this.tone(138,382,.88,.08,'sine',this.effects);
     if (type==='boss' || type==='boss-phase') {
       const motif = /[0-9]+$/.exec(variant ?? '');
       const root = roots[Number(motif?.[0] ?? 0)];

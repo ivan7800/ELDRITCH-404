@@ -29,7 +29,7 @@ test('el HTML autónomo inicia, muestra mapas, guarda y restaura desde su interf
     document:{getElementById:element,documentElement:{},addEventListener(){}},
     navigator:{},location:{search:'?qa=1',hostname:'localhost',protocol:'http:'},
     localStorage:{getItem:id=>store.get(id)??null,setItem:(id,value)=>store.set(id,value),removeItem:id=>store.delete(id)},
-    requestAnimationFrame(){}, addEventListener(){}, console, structuredClone, URLSearchParams,
+    requestAnimationFrame(){}, addEventListener(){}, matchMedia:()=>({matches:false}), console, structuredClone, URLSearchParams,
     setTimeout(){},clearTimeout(){},
     Image:class { decode(){ assert.ok(this.src.startsWith('data:image/png;base64,')); return Promise.resolve(); } }
   };

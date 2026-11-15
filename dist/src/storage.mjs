@@ -1,4 +1,4 @@
-import { defaultKeys, defaultPad, enemies, playModes, relics, stages, upgrades, weapons } from './content.mjs';
+import { defaultKeys, defaultPad, enemies, expeditionOaths, playModes, relics, stages, upgrades, weapons } from './content.mjs';
 import { archive, decisions, endings, newProgress, refreshAchievements, settle } from './campaign.mjs';
 export const key = 'eldritch404.profile';
 export const suspendedKey = 'eldritch404.expedition';
@@ -38,6 +38,10 @@ export function validate(data) {
   const ids = (value,accept) => Array.isArray(value) ? [...new Set(value.filter(accept))] : [];
   const stageId = id => Number.isInteger(id) && id>=0 && id<stages.length;
   progress.clears = ids(p.clears,stageId);
+  for (const id of Object.keys(expeditionOaths)) {
+    const cleared = ids(p.oaths?.[id],stage=>stageId(stage)&&progress.clears.includes(stage));
+    if (cleared.length) progress.oaths[id] = cleared;
+  }
   progress.hunter = ids(p.hunter,stageId);
   progress.bestiary = ids(p.bestiary,id=>Object.hasOwn(enemies,id)&&!enemies[id].boss);
   progress.bosses = ids(p.bosses,id=>Object.hasOwn(enemies,id)&&enemies[id].boss);

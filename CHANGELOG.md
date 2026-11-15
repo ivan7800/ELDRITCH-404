@@ -1,5 +1,14 @@
 # Cambios
 
+## 0.6.0 · Los juramentos de la costa
+
+- Nueve escenarios redibujados, desde los túmulos del Cementerio hasta las grietas del Corazón del Caos.
+- Ataque propio de segunda fase para cada jefe principal de Historia. Los avisos se dibujan por encima de los elementos del mapa. Los relojes astrales señalan los proyectiles que van a invertir su curso.
+- Rescatar, anclar o marcar tiene un efecto al preparar el capítulo siguiente. Se explica antes de tomar la decisión.
+- Tres juramentos opcionales para capítulos completados, con recompensa por primera victoria y registro en el Cuaderno. Se pueden guardar y reanudar. Conservan la decisión del capítulo.
+- Las mejoras de Historia ofrecen una opción para subir un arma equipada cuando cabe en la selección, y una venda con salud crítica en capítulos posteriores a Innsmouth. Se ajustan la densidad local de proyectiles y las oleadas intermedias de tres mapas.
+- Compatibilidad con la preferencia de movimiento reducido del sistema.
+
 ## 0.5.0 · La resaca de Innsmouth
 
 - Nuevos muelles, tejados y embarcaderos en Innsmouth. La pleamar cubre parte de la plaza, cambia los reflejos y deja entrever luces sumergidas con cordura baja.

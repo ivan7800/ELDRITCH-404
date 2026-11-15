@@ -3,8 +3,8 @@ import { Renderer } from './render.mjs';
 import { Input } from './input.mjs';
 import { Sound } from './audio.mjs';
 import { load, save, fresh, validate, record, key, suspendedKey, suspend, restore } from './storage.mjs';
-import { defaultKeys, defaultPad, weapons, upgrades, enemies, step, investigators, stages, playModes, relics, bestiary, bossTells, expeditionTime, harbourWeaponHints } from './content.mjs';
-import { archive, archiveCost, achievements, bonuses, buy, decisions, dispatches, endings, finalChoices, investigatorUnlocked, resolveStory, stageUnlocked } from './campaign.mjs';
+import { defaultKeys, defaultPad, weapons, upgrades, enemies, step, investigators, stages, playModes, relics, bestiary, bossTells, environmentWarnings, expeditionOaths, expeditionTime, harbourWeaponHints, signatures } from './content.mjs';
+import { archive, archiveCost, achievements, bonuses, buy, consequences, decisions, dispatches, endings, finalChoices, investigatorUnlocked, resolveStory, stageUnlocked } from './campaign.mjs';
 import { clamp } from './math.mjs';
 
 const $ = id => document.getElementById(id);
@@ -14,7 +14,7 @@ const storage = { getItem: k => localStorage.getItem(k), setItem: (k,v) => local
 let profile = load(storage);
 let game, camera, previous, screen = 'home', optionsFrom = 'home', accumulator = 0, noteTimer, padConnected = false;
 let selected = {stage:stages.find(item=>!profile.progress.clears.includes(item.id)&&stageUnlocked(profile.progress,item.id))?.id??0,
-  character:0,mode:'story',rival:false,length:.75};
+  character:0,mode:'story',rival:false,length:.75,oath:''};
 let ending = null;
 let codexTab = 'beasts';
 let codexFrom = 'journal';
@@ -30,6 +30,7 @@ const arenaArt = stage => stage ? 'assets/arena'+stage+'.png' : 'assets/quay.png
 const input = new Input();
 const sound = new Sound();
 const renderer = new Renderer(world);
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const testClock = new URLSearchParams(location.search).get('qa') === '1' && ['localhost','127.0.0.1'].includes(location.hostname);
 const samples = [];
 const tr = (es,en) => profile.settings.language === 'es' ? es : en;
@@ -81,7 +82,7 @@ function show(name) {
         btn('story-brief',storyLabel(),!pending&&!suspended)+
         btn('modes',tr('Modos alternativos','Other modes'))+btn('campaign',tr('Campaña','Campaign'))+
         btn('archive',tr('Archivo','Archive'))+btn('options',tr('Opciones','Settings'))+
-        '</div><p class="hero-footer">'+progress+' · v0.5.0</p></div></section>';
+        '</div><p class="hero-footer">'+progress+' · v0.6.0</p></div></section>';
       break;
     }
     case 'campaign':
@@ -179,6 +180,8 @@ function show(name) {
         retired?tr('Tu récord se ha registrado en el cuaderno.','Your record has been logged in the journal.'):
         tr('La última anotación de tu cuaderno se deshace en el agua. Otro investigador ocupará tu lugar cuando baje la marea.','The final line in your journal dissolves in the water. Another investigator will take your place at low tide.'))+'</p>'+
         statCards([[tr('Tiempo','Time'),timeLabel(game.time)],[tr('Bajas','Kills'),game.kills],[tr('Nivel','Level'),game.level]])+
+        (game.oath?'<p class="tag">'+loc(expeditionOaths[game.oath].name)+(win?(game.oathReward?
+          ' · +'+game.oathReward+' '+tr('sellos','seals'):' · '+tr('Completado','Completed')):'')+'</p>':'')+
         '<p>'+tr('Armas utilizadas','Weapons used')+' · '+Object.entries(game.arsenal).map(([id,rank])=>loc(weapons[id].name)+' '+'I'.repeat(rank)).join(' · ')+'</p>'+
         group((profile.progress.pending?btn('chronicle',tr('Tomar la decisión','Make your decision'),true):btn('start',tr('Otra expedición','Another expedition'),true))+btn('home',tr('Volver al título','Return to title'))));
       break;
@@ -235,6 +238,16 @@ function displayBrief() {
   const boss = enemies[selected.rival?stage.optional:stage.main];
   const first = stage.id===0 && story;
   const showLoadout = loadoutOpen || !story;
+  const oath = story && progress.clears.includes(stage.id) ? selected.oath : '';
+  const consequence = story && consequences[progress.choices[stage.id-1]];
+  const oathOptions = story && progress.clears.includes(stage.id) ?
+    '<h3>'+tr('Juramento de expedición','Expedition oath')+'</h3><div class="selection">'+
+    pick('pick-oath','',tr('Sin juramento','No oath'),!oath)+Object.entries(expeditionOaths).map(([id,item])=>
+      pick('pick-oath',id,loc(item.name)+(progress.oaths[id]?.includes(stage.id)?' ✓':''),oath===id)).join('')+'</div>'+
+    (oath?'<p>'+loc(expeditionOaths[oath].desc)+' '+tr('Primera victoria en este capítulo','First win in this chapter')+
+      ' · +'+expeditionOaths[oath].reward+' '+tr('sellos.','seals.')+'</p>':
+      '<p>'+tr('Cada juramento tiene una recompensa por capítulo. Sus victorias conservan tu decisión de Historia.',
+        'Each oath has a reward per chapter. Oath victories preserve your Story decision.')+'</p>') : '';
   const maps = stages.map(item=>pick('pick-stage',item.id,(item.id+1)+' · '+loc(item.name),item.id===stage.id,!free&&!stageUnlocked(progress,item.id)));
   const roster = investigators.map(item=>pick('pick-character',item.id,loc(item.name),item.id===char.id,!free&&!investigatorUnlocked(progress,item.id)));
   const objective = selected.mode==='endless' ?
@@ -246,11 +259,14 @@ function displayBrief() {
     ' · '+Math.round(char.power*100)+'% '+tr('potencia','power')+' · '+(100-char.sanityCost)+'% '+tr('cordura','sanity')+'</p>'+
     (!story ? '<h3>'+tr('Encuentro','Encounter')+'</h3>'+group(pick('pick-rival',0,loc(enemies[stage.main].name),!selected.rival)+
       pick('pick-rival',1,loc(enemies[stage.optional].name),selected.rival)) : '')+
-    (free ? '<h3>'+tr('Duración','Duration')+'</h3>'+group(pick('pick-length',.5,tr('Corta','Short'),selected.length===.5)+pick('pick-length',.75,tr('Media','Medium'),selected.length===.75)+pick('pick-length',1.35,tr('Larga','Long'),selected.length===1.35)) : '');
+    (free ? '<h3>'+tr('Duración','Duration')+'</h3>'+group(pick('pick-length',.5,tr('Corta','Short'),selected.length===.5)+pick('pick-length',.75,tr('Media','Medium'),selected.length===.75)+pick('pick-length',1.35,tr('Larga','Long'),selected.length===1.35)) : '')+
+    oathOptions;
   overlay.innerHTML = panel(story ? tr('Capítulo ','Chapter ')+(stage.id+1)+' / '+stages.length : loc(playModes[selected.mode].name),loc(stage.name),
     '<div class="brief-overview"><div><p class="brief-objective">'+objective+'</p><p>'+(selected.rival?tr('Encuentro alternativo. Observa el aviso de carga antes de esquivar.','Alternate encounter. Watch for the windup before dodging.'):loc(stage.brief))+'</p>'+
-    '<p><strong>'+timeLabel(expeditionTime(stage,selected.mode,selected.length))+'</strong> · '+loc(boss.name)+'</p>'+
+    '<p><strong>'+timeLabel(expeditionTime(stage,selected.mode,selected.length,oath))+'</strong> · '+loc(boss.name)+'</p>'+
     '<p>'+loc(char.name)+' · '+loc(weapons[char.weapon].name)+'</p>'+
+    (oath?'<p class="tag">'+loc(expeditionOaths[oath].name)+'</p>':'')+
+    (consequence?'<p>'+loc(consequence.text)+'</p>':'')+
     (profile.stats.veteran&&!['free','challenge'].includes(selected.mode)?'<p class="tag">'+tr('Credencial de veterano activa · Botas I','Veteran credential active · Boots I')+'</p>':'')+
     (story&&progress.supplies?'<p class="tag">'+tr('Suministros recuperados · +12 de salud inicial','Recovered supplies · +12 starting health')+'</p>':'')+
     '</div><img src="'+arenaArt(stage.id)+'" alt="" width="240" height="135"></div>'+
@@ -289,7 +305,9 @@ function displayCodex() {
   if (codexTab==='finales') body=Object.entries(endings).map(([id,[title,line]])=>'<li>'+loc(title)+' · '+
     (p.endings.includes(id)?loc(line):tr('Pendiente','Locked'))+'</li>').join('');
   if (codexTab==='records') body=Object.entries(playModes).map(([id,mode])=>'<li>'+loc(mode.name)+' · '+timeLabel(p.records[id]?.time??0)+
-    ' · '+(p.records[id]?.kills??0)+' '+tr('bajas','kills')+'</li>').join('');
+    ' · '+(p.records[id]?.kills??0)+' '+tr('bajas','kills')+'</li>').join('')+
+    Object.entries(expeditionOaths).map(([id,item])=>'<li>'+loc(item.name)+' · '+(p.oaths[id]?.length??0)+'/'+stages.length+
+      ' '+tr('capítulos','chapters')+'</li>').join('');
   overlay.innerHTML=panel(tr('Cuaderno de campo','Field journal'),tabs[codexTab],group(btn(codexFrom,tr('Volver','Back'),true))+
     '<div class="selection">'+Object.entries(tabs).map(([id,name])=>pick('codex-tab',id,name,codexTab===id)).join('')+'</div><ul class="codex-list">'+body+'</ul>',true);
 }
@@ -305,7 +323,10 @@ function displayChronicle() {
   overlay.innerHTML = panel(tr('Decisión de campaña','Campaign decision'),loc(stage.name),'<p>'+loc(stage.story)+'</p><p>'+loc(dispatches[stage.id])+'</p>'+hint+
     (stage.id===9?'<p>'+tr('Rescatar a tres duplicados cambia el cierre. Tres anclas y corrupción de 2 o menos cambian el control. Tres marcas cambian la fusión.',
       'Three rescued duplicates change the seal. Three anchors and corruption of 2 or less change control. Three marks change the merge.')+'</p>':'')+
-    group(Object.entries(choices).map(([id,name])=>pick('story-choice',id,loc(name))).join('')),true);
+    (stage.id===9 ? group(Object.entries(choices).map(([id,name])=>pick('story-choice',id,loc(name))).join('')) :
+      '<div class="cards">'+Object.entries(choices).map(([id,name])=>
+        '<button class="loot" data-do="story-choice" data-value="'+id+'" aria-label="'+loc(name)+'" aria-describedby="choice-'+id+
+        '"><strong>'+loc(name)+'</strong><small id="choice-'+id+'">'+loc(consequences[id].text)+'</small></button>').join('')+'</div>'),true);
 }
 const actionLabels = {up:['Arriba','Up'],down:['Abajo','Down'],left:['Izquierda','Left'],right:['Derecha','Right'],
   dash:['Esquiva','Dodge'],interact:['Ritual','Ritual'],pause:['Pausa','Pause'],confirm:['Confirmar','Confirm'],back:['Atrás','Back']};
@@ -345,7 +366,7 @@ function makeHud() {
     '<div class="run-box"><span class="status" id="tide"></span><time id="clock">00:00</time><div class="hud-row"><span id="level-text"></span><span id="kills"></span></div><meter id="xp" min="0" max="5" value="0" aria-label="'+tr('Experiencia','Experience')+'"></meter></div>'+
     '<div class="tool-box"><div class="hud-row"><span>'+tr('ESQUIVA','DODGE')+'</span><span id="dash"></span></div><div class="hud-row"><span>'+tr('CORRUPCIÓN','CORRUPTION')+'</span><span id="corrupt"></span></div><div class="hud-row" id="current-row" hidden><span>'+tr('CORRIENTE','CURRENT')+'</span><span id="current-direction"></span></div></div></div>'+
     '<div class="arsenal" id="arsenal"></div><div class="interaction" id="interaction" hidden><button data-do="interact" id="interact-button"></button></div>'+
-    '<div class="boss-bar" id="boss-bar" hidden><span id="boss-name"></span><span id="boss-warning" class="boss-warning" hidden></span><meter id="boss-meter" min="0" max="100" value="100"></meter></div>';
+    '<div class="boss-bar" id="boss-bar" hidden><span id="boss-name"></span><span id="boss-warning" class="boss-warning" aria-live="polite" hidden></span><meter id="boss-meter" min="0" max="100" value="100"></meter></div>';
   lastArsenal = '';
   hudNodes = {};
 }
@@ -390,7 +411,10 @@ function updateHud() {
     updateField('boss-meter',boss.maxHp,'max');
     updateField('boss-meter',Math.max(0,boss.hp),'value');
     updateField('boss-warning',boss.action!=='tell','hidden');
-    if (boss.action==='tell') updateField('boss-warning',loc(bossTells[boss.attack ?? game.bossAttack(boss)]));
+    if (boss.action==='tell') {
+      const attack = boss.attack ?? game.bossAttack(boss);
+      updateField('boss-warning',loc(signatures[attack]?.tell ?? bossTells[attack] ?? ['Ataque en preparación','Attack winding up']));
+    }
   }
   const fingerprint = Object.entries(game.arsenal).join('|');
   if (fingerprint !== lastArsenal) {
@@ -416,10 +440,11 @@ async function start(replace = false) {
   const fair = selected.mode==='challenge' || selected.mode==='free';
   const stage = selected.mode==='free' || stageUnlocked(profile.progress,selected.stage) ? selected.stage : 0;
   const character = selected.mode==='free' || investigatorUnlocked(profile.progress,selected.character) ? selected.character : 0;
-  const perks = fair ? {} : bonuses(profile.progress);
+  const perks = fair ? {} : bonuses(profile.progress,selected.mode==='story'?stage:undefined);
   const supplied = selected.mode==='story' && profile.progress.supplies>0;
   if (supplied) perks.vitality = (perks.vitality ?? 0)+12;
-  const expedition = new Expedition({...selected,stage,character, difficulty:selected.mode==='challenge'?'standard':profile.settings.difficulty, veteran:!fair&&profile.stats.veteran,
+  const oath = profile.progress.clears.includes(stage) ? selected.oath : '';
+  const expedition = new Expedition({...selected,stage,character,oath, difficulty:selected.mode==='challenge'?'standard':profile.settings.difficulty, veteran:!fair&&profile.stats.veteran,
     perks, openArsenal: selected.mode==='free'?9:stage, guide:!profile.progress.clears.includes(0) && stage===0 && selected.mode==='story',
     ...(testClock || selected.mode==='challenge'?{seed:404+stage*17}:{})});
   if (replace) storage.removeItem(suspendedKey);
@@ -434,7 +459,7 @@ function enter(expedition) {
   show(game.mode);
   accumulator = 0;
   pending = {};
-  camera = renderer.draw(game,profile.settings.reduced,profile.settings.contrast);
+  camera = renderer.draw(game,profile.settings.reduced || reducedMotion.matches,profile.settings.contrast);
   updateHud();
 }
 async function action(id,value) {
@@ -448,6 +473,7 @@ async function action(id,value) {
       selected.mode='story';
       selected.stage=id==='open-chapter'?Number(value):nextChapter().id;
       selected.rival=false;
+      selected.oath='';
       if (!investigatorUnlocked(profile.progress,selected.character)) selected.character=0;
       loadoutOpen=false;
       show('brief');
@@ -456,6 +482,7 @@ async function action(id,value) {
       if (!Object.hasOwn(playModes,value) || value==='story') break;
       selected.mode=value;
       selected.rival=false;
+      selected.oath='';
       if (value!=='free') {
         if (!stageUnlocked(profile.progress,selected.stage)) selected.stage=nextChapter().id;
         if (!investigatorUnlocked(profile.progress,selected.character)) selected.character=0;
@@ -496,7 +523,8 @@ async function action(id,value) {
     case 'abandon-yes':
       try { storage.removeItem(suspendedKey); } catch {}
       game=null; show('home'); break;
-    case 'pick-stage': selected.stage=Number(value); showSelection(id,value); break;
+    case 'pick-stage': selected.stage=Number(value); selected.oath=''; showSelection(id,value); break;
+    case 'pick-oath': selected.oath=Object.hasOwn(expeditionOaths,value)?value:''; showSelection(id,value); break;
     case 'pick-character': selected.character=Number(value); showSelection(id,value); break;
     case 'pick-rival': selected.rival=value==='1'; showSelection(id,value); break;
     case 'pick-length': selected.length=Number(value); showSelection(id,value); break;
@@ -510,7 +538,7 @@ async function action(id,value) {
       if (!result) break;
       persist();
       if (result.ending) { ending=result.ending; show('ending'); }
-      else { selected.stage=result.stage+1; selected.rival=false; selected.mode='story'; loadoutOpen=false; show('brief'); }
+      else { selected.stage=nextChapter().id; selected.rival=false; selected.oath=''; selected.mode='story'; loadoutOpen=false; show('brief'); }
       break;
     }
     case 'resume': accumulator=0; pending={}; show('play'); break;
@@ -679,7 +707,7 @@ function frame(now) {
   }
   if (game && !world.hidden) {
     if (screen === 'play' || screen !== drawnScreen) {
-      camera = renderer.draw(game,profile.settings.reduced,profile.settings.contrast);
+      camera = renderer.draw(game,profile.settings.reduced || reducedMotion.matches,profile.settings.contrast);
       updateHud();
     }
   }
@@ -718,10 +746,7 @@ function syncScreen() {
     }
     if (event.type === 'boss') notice(loc(enemies[game.bossId].name));
     if (event.type === 'landmark' && !game.boss) {
-      const cue = event.value===6 ? tr('Los proyectiles invierten su curso','Projectiles reverse course') :
-        event.value===7 ? tr('Descarga desde los estantes','Volley from the shelves') :
-        loc(game.stage.feature)+' · '+tr('Suelo inestable','Unstable ground');
-      notice(cue);
+      notice(loc(environmentWarnings[event.value]));
     }
     if (event.type==='harbour-tide') notice(event.value==='tide' ?
       tr('El agua alcanza la baliza. Iluminarla ahora tiene un precio mayor.','Water reaches the beacon. Lighting it now comes at a higher price.') :
@@ -731,6 +756,7 @@ function syncScreen() {
       tr('La niebla se cierra. Empiezan a aparecer más sombras.','The fog closes in. More shades begin to emerge.'),4200);
     if (event.type === 'boss-phase') notice(event.value==='boss' ?
       tr('Segunda fase · La Sacristana apaga los faroles.','Second phase · The Sacristan extinguishes the lanterns.') :
+      game.stage.signature && event.value===game.stage.main ? loc(signatures[game.stage.signature].shift) :
       tr('Segunda fase','Second phase'));
     if (event.type === 'endless-clear') notice(tr('Jefes vencidos · ','Bosses defeated · ')+game.clearCount);
     if (event.type === 'evolution') notice(loc(weapons[event.value].name));
@@ -768,7 +794,7 @@ if (testClock) {
         game.update(step,controls ?? {x:qaInput.x,y:qaInput.y,dash:qaInput.dash,interact:qaInput.interact},camera);
         syncScreen();
       }
-      if (game) { camera=renderer.draw(game,profile.settings.reduced,profile.settings.contrast); updateHud(); }
+      if (game) { camera=renderer.draw(game,profile.settings.reduced || reducedMotion.matches,profile.settings.contrast); updateHud(); }
     },
     measurements: () => [...samples]
   };

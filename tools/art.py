@@ -325,42 +325,146 @@ def painted_arena(index, colors):
     w,h=864,576
     im,d=canvas(w,h,dark)
     rand=Random(index*4233)
-    for y in range(0,h,13 if index%2 else 17):
-        for x in range(-(y//13%2)*12,w,26 if index%2 else 31):
-            if rand.random()<.27: continue
-            d.line((x,y,x+rand.randint(9,18),y),mid)
-            if rand.random()<.26: d.point((x+3,y+1),trim)
-    cx,cy=w//2,h//2
-    for radius in [46,51,82,97]:
-        d.ellipse((cx-radius,cy-radius,cx+radius,cy+radius),outline=mid,width=2)
-    for i in range(130):
-        x,y=rand.randrange(19,w-20),rand.randrange(28,h-29)
-        if abs(x-cx)<34 or abs(y-cy)<31: continue
-        size=rand.randrange(4,13)
-        if index in (1,6):
-            d.polygon([(x-size,y),(x-size,y-13),(x,y-20),(x+size,y-13),(x+size,y)],fill=mid,outline=trim)
-            d.line((x-4,y-6,x+4,y-6),light)
-        elif index in (2,5):
-            for leg in (-1,0,1):
-                d.line([(x+leg*size,y+size),(x+leg*4,y),(x,y-15),(x-leg*size,y-25)],mid,width=3)
-                d.point((x-leg*size,y-25),light)
-        elif index == 3:
-            d.arc((x-size*2,y-size,x+size*2,y+size),10,179,fill=trim)
-            d.arc((x-size*3,y-size-4,x+size*3,y+size+4),180,356,fill=mid)
-        elif index in (4,9):
-            d.polygon([(x,y-size),(x+size,y),(x,y+size),(x-size,y)],outline=trim)
-            d.line((x-size,y,x,y,x+size,y),mid)
-            d.point((x,y),light)
-        else:
-            d.rectangle((x-size,y-size,x+size,y+size),fill=mid,outline=trim)
-            for shelf in range(x-size+2,x+size,4):
-                d.line((shelf,y-size+1,shelf,y+size-1),dark)
-                d.point((shelf+1,y-3),light)
-    for n in range(8+index):
-        a=n*2*pi/(8+index)
-        x=cx+cos(a)*104
-        y=cy+sin(a)*104
-        d.line((x,y,x+cos(a)*13,y+sin(a)*13),light,width=2)
+    line,poly,rect,oval=d.line,d.polygon,d.rectangle,d.ellipse
+    shadow=tuple(int(dark[i:i+2],16)*3//5 for i in (1,3,5))
+    floor=tuple((int(dark[i:i+2],16)*2+int(mid[i:i+2],16))//3 for i in (1,3,5))
+    for y in range(0,h,9+index%3):
+        for x in range(-(y//13%2)*12,w,21+index%4):
+            if rand.random()<.25: continue
+            line((x,y,x+rand.randint(7,17),y),floor)
+            if rand.random()<.20: d.point((x+3,y+1),mid)
+
+    def path(points, width=49):
+        line(points,shadow,width+8,joint='curve')
+        line(points,floor,width,joint='curve')
+        for a,b in zip(points,points[1:]):
+            line((a,b),mid,2)
+
+    def ribs(x,y,width,height,fill):
+        poly([(x-width//2,y),(x-width//2,y-height//2),(x,y-height),(x+width//2,y-height//2),(x+width//2,y)],
+             fill,outline=trim)
+
+    if index==1:
+        path([(432,0),(432,214),(426,324),(520,470),(520,576)],67)
+        path([(0,321),(213,289),(426,324),(677,328),(864,300)],43)
+        for cx,cy in [(272,224),(598,238),(334,385),(576,388),(208,435),(727,190),(736,444),(117,196)]:
+            oval((cx-89,cy-50,cx+89,cy+45),shadow,outline=mid,width=2)
+            for row in range(3):
+                for j in range(5):
+                    x,y=cx+(j-2)*28+(row%2)*9,cy+(row-1)*21
+                    fallen=rand.randrange(5)==0
+                    if fallen: line((x-7,y,x+7,y-5),trim,3)
+                    else:
+                        ribs(x,y,14,18,mid)
+                        line((x,y-14,x,y-5),light)
+                        line((x-2,y-11,x+2,y-11),light)
+        for x,y in [(368,270),(499,274),(368,375),(492,374)]:
+            ribs(x,y,25,42,mid)
+            rect((x-2,y-29,x+1,y-25),light)
+    elif index==2:
+        for x in (120,432,752): path([(x,0),(x,576)],70 if x==432 else 36)
+        path([(0,333),(864,333)],67)
+        oval((301,131,563,339),floor,outline=trim,width=4)
+        for n in range(4):
+            d.arc((316+n*9,154+n*9,548-n*9,310-n*9),180,360,fill=light if n==0 else mid,width=2)
+        for x in range(355,514,14):
+            high=32+int(55*(1-abs(x-432)/92))
+            ribs(x,233,12,high,mid)
+            rect((x-3,219,x+3,230),shadow)
+        for y in range(242,515,31):
+            for x in (235,337,527,629):
+                oval((x-16,y-8,x+16,y+8),shadow)
+                rect((x-5,y-25,x+4,y),mid)
+                d.point((x,y-24),light)
+    elif index==3:
+        for points in [[(0,423),(231,342),(423,363),(626,316),(864,343)],
+                       [(432,0),(517,164),(423,363),(489,576)]]:
+            line(points,shadow,99,joint='curve')
+            line(points,mid,53,joint='curve')
+            line(points,dark,39,joint='curve')
+        for cx,cy in [(269,249),(651,235),(299,424),(661,415),(107,227),(766,478)]:
+            poly([(cx-47,cy),(cx-33,cy-37),(cx+39,cy-49),(cx+60,cy-8),(cx+33,cy+23),(cx-31,cy+23)],floor,outline=trim)
+            ribs(cx,cy,50,54,mid)
+            for j in (-1,0,1):
+                rect((cx+j*14-3,cy-13,cx+j*14+3,cy-7),shadow)
+            for j in range(7):
+                y=cy+21+j*5
+                line((cx+rand.randrange(-43,-4),y,cx+rand.randrange(2,50),y),trim if j%3==0 else mid)
+        for x,y in [(375,289),(491,343),(365,409),(565,350)]:
+            oval((x-5,y-5,x+5,y+5),light,outline=mid)
+            line((x,y+6,x,y+19),trim)
+    elif index==4:
+        for cx,cy,size in [(432,296,122),(218,215,81),(634,219,90),(263,426,78),(624,435,105),(78,372,74),(787,115,84)]:
+            for layer,offset in enumerate([29,19,8,0]):
+                r=size-offset
+                poly([(cx-r,cy+offset),(cx,cy-r//2+offset),(cx+r,cy+offset),(cx,cy+r//2+offset)],
+                     [shadow,mid,floor,dark][layer],outline=trim if layer!=3 else light)
+            line((cx-size,cy,cx+size,cy),mid)
+            line((cx,cy-size//2,cx,cy+size//2),trim)
+            poly([(cx-17,cy),(cx,cy-9),(cx+17,cy),(cx,cy+9)],mid,outline=trim)
+    elif index==5:
+        path([(378,0),(354,132),(423,272),(432,385),(357,512),(383,576)],69)
+        path([(0,366),(220,333),(423,272),(677,319),(864,285)],51)
+        for cx,cy in [(273,221),(554,235),(333,370),(535,401),(235,447),(672,405),(120,197),(730,173),(751,477)]:
+            oval((cx-54,cy-15,cx+69,cy+36),shadow)
+            for leg in range(8):
+                a=leg*pi/4
+                line([(cx,cy),(cx+cos(a)*22,cy+sin(a)*14),(cx+cos(a+.3)*57,cy+sin(a+.3)*36)],mid,4)
+            poly([(cx-17,cy+7),(cx-13,cy-43),(cx-5,cy-75),(cx+12,cy-52),(cx+21,cy+8)],mid,outline=trim)
+            for j in range(5):
+                oval((cx-6-j*2,cy-37-j*5,cx+13-j*2,cy-26-j*5),shadow,outline=trim)
+            d.point((cx+3,cy-55),light)
+    elif index==6:
+        path([(0,291),(864,291)],88)
+        path([(432,0),(432,576)],65)
+        for y in (155,216,358,425,492):
+            for x in (177,247,327,537,609,689,758):
+                rect((x-27,y-20,x+27,y+24),shadow,outline=mid,width=2)
+                line((x-27,y+22,x+27,y+22),trim)
+                rect((x-18,y-11,x+5,y+4),floor,outline=trim)
+                rect((x-18,y-11,x-11,y+3),mid)
+        for cx,cy in [(323,269),(541,270),(432,403)]:
+            oval((cx-29,cy-29,cx+29,cy+29),floor,outline=light,width=2)
+            for j in range(12):
+                a=j*pi/6
+                line((cx+cos(a)*24,cy+sin(a)*24,cx+cos(a)*27,cy+sin(a)*27),trim)
+            line((cx,cy-17,cx,cy,cx+12,cy+7),light,2)
+    elif index==7:
+        path([(432,0),(432,576)],89)
+        path([(0,328),(864,328)],59)
+        for x in (115,235,337,527,629,749):
+            for y in (112,218,433,520):
+                rect((x-49,y-45,x+49,y+18),shadow,outline=mid,width=3)
+                rect((x-44,y-38,x+44,y+9),mid,outline=trim)
+                for row in range(y-32,y+7,12):
+                    line((x-41,row,x+41,row),shadow,2)
+                    for j in range(x-39,x+39,7):
+                        rect((j,row-6,j+rand.randint(2,4),row-2),rand.choice([floor,trim,light]))
+        for x,y in [(374,269),(490,269),(374,378),(490,378)]:
+            rect((x-14,y-10,x+14,y+14),mid,outline=trim)
+            rect((x-8,y-5,x+6,y+9),light)
+            line((x,y-4,x,y+9),shadow)
+    elif index==8:
+        path([(432,0),(432,576)],107)
+        path([(0,340),(864,340)],67)
+        for i in range(5):
+            rect((284+i*19,154+i*15,580-i*19,305-i*4),floor,outline=trim,width=2)
+        poly([(381,252),(381,181),(407,167),(432,187),(457,167),(483,181),(483,252)],mid,outline=light,width=2)
+        rect((401,211,463,253),shadow,outline=trim,width=2)
+        for x in (226,342,522,638):
+            for y in (287,381,470):
+                oval((x-23,y-11,x+30,y+15),shadow)
+                rect((x-9,y-49,x+9,y+3),mid,outline=trim)
+                line((x-9,y-46,x+9,y-46),light)
+    else:
+        path([(432,0),(419,198),(438,339),(430,576)],72)
+        path([(0,311),(220,292),(438,339),(673,284),(864,311)],69)
+        for cx,cy in [(260,225),(600,210),(330,385),(545,399),(145,410),(729,441),(726,139)]:
+            for r in (59,46,32):
+                d.arc((cx-r,cy-r//2,cx+r,cy+r//2),15+r*2,270+r,fill=mid if r==59 else trim,width=2)
+            poly([(cx-51,cy+2),(cx-19,cy-7),(cx-14,cy-34),(cx+3,cy-18),(cx+13,cy-25),(cx+28,cy-1),
+                  (cx+57,cy+16),(cx+13,cy+10),(cx-10,cy+30),(cx-22,cy+7)],shadow,outline=trim)
+            line((cx-33,cy,cx-13,cy-8,cx-13,cy-21,cx+2,cy-10,cx+13,cy-14,cx+21,cy+1,cx+46,cy+13),light)
     return im
 
 for stage_index,palette in enumerate(palettes,1):

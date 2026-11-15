@@ -84,6 +84,59 @@ export const bossTells = {
   shell:['Anillo de proyectiles','Ring of projectiles'], roots:['Cerco de raíces','Ring of roots'], clock:['Salva escalonada','Staggered volley'],
   gates:['Disparos laterales','Flanking shots'], sweep:['Barrido horizontal','Horizontal sweep'], spiral:['Salva en espiral','Spiral volley']
 };
+// Each signature describes the shape of the first attack after the boss changes phase.
+export const signatures = {
+  boneFan: { shape:'fan', tell:['Doble abanico · sal por un costado','Double fan · move to one side'],
+    shift:['El Fosero alza la segunda pala.','The Gravedigger raises his second spade.'],
+    volley:[[-.62,0],[-.36,0],[-.13,0],[.13,.19],[.36,.19],[.62,.19]] },
+  organPipes: { shape:'gates', tell:['Tubos gemelos · cruza por el centro','Twin pipes · cross through the centre'],
+    shift:['El órgano toma aire por dos bocas.','The organ draws breath through two mouths.'],
+    seals:[[-72,-84,0],[-72,-28,.1],[-72,28,.2],[-72,84,.3],[72,-84,.3],[72,-28,.2],[72,28,.1],[72,84,0]] },
+  towLines: { shape:'sweep', tell:['Corrientes cruzadas · deja libre la franja','Crosscurrents · clear the lane'],
+    shift:['La Viuda suelta los cabos de las boyas.','The Widow cuts the buoy lines.'],
+    lanes:[[-156,-48,0,0],[-156,0,0,.18],[-156,48,0,.36],[156,-72,Math.PI,.28],[156,24,Math.PI,.12],[156,72,Math.PI,0]] },
+  splitCorners: { shape:'cross', tell:['Vértices plegados · sal del centro','Folded corners · leave the centre'],
+    shift:['Las cuatro esquinas se doblan hacia ti.','All four corners fold toward you.'],
+    lanes:[[-106,-106,.25*Math.PI,0],[106,106,1.25*Math.PI,0],[106,-106,.75*Math.PI,.35],[-106,106,1.75*Math.PI,.35]] },
+  rootCage: { shape:'roots', tell:['Jaula de raíces · busca los extremos','Root cage · find the ends'],
+    shift:['El Ciervo clava sus astas en el suelo.','The Stag drives its antlers into the ground.'],
+    seals:[[-82,0,0],[-66,-56,.08],[-66,56,.08],[-34,-82,.19],[-34,82,.19],
+      [82,0,0],[66,-56,.08],[66,56,.08],[34,-82,.19],[34,82,.19]] },
+  deadHour: { shape:'clock', tell:['Hora muerta · espera la segunda salva','Dead hour · watch for the second volley'],
+    shift:['El Celador detiene el reloj del pasillo.','The Warden stops the corridor clock.'],
+    volley:[[-1.6,0],[-.9,0],[-.2,0],[.5,0],[1.2,0],[1.9,0],[-1.25,.55],[-.55,.55],[.15,.55],[.85,.55],[1.55,.55]] },
+  shelfDrop: { shape:'gates', tell:['Fichas enfrentadas · corre en horizontal','Cross-index · run sideways'],
+    shift:['La Archivera arranca las fichas con tu nombre.','The Archivist tears out the cards that bear your name.'],
+    lanes:[[-84,-136,Math.PI/2,0],[-28,-136,Math.PI/2,.15],[28,-136,Math.PI/2,.3],[84,-136,Math.PI/2,.45],
+      [-70,136,-Math.PI/2,.45],[0,136,-Math.PI/2,.3],[70,136,-Math.PI/2,.15]] },
+  goldenBands: { shape:'sweep', tell:['Franja doble · pasa entre las líneas','Twin bands · move between the rows'],
+    shift:['El Custodio vuelca el trono.','The Custodian overturns the throne.'],
+    seals:[[-90,-55,0],[-30,-55,.1],[30,-55,.2],[90,-55,.3],[-90,55,.3],[-30,55,.2],[30,55,.1],[90,55,0]] },
+  falseOrbit: { shape:'spiral', tell:['Órbita rota · sigue el hueco','Broken orbit · follow the gap'],
+    shift:['El Testigo recuerda un cielo que nunca existió.','The Witness remembers a sky that never existed.'],
+    volley:[[-2,0],[-1.4,.08],[-.8,.16],[.65,.24],[1.25,.32],[1.85,.4],[2.45,.48],[-2.75,.56]] }
+};
+export const expeditionOaths = {
+  dusk: {name:['Sin luz','Without light'], desc:['Empiezas con un máximo de 55 de cordura.','Start with no more than 55 sanity.'], reward:16, sanity:55},
+  haste: {name:['Contra la marea','Against the tide'], desc:['El jefe llega un 20 % antes y las oleadas avanzan antes.','The boss arrives 20% sooner and waves advance sooner.'], reward:16, duration:.8},
+  ash: {name:['Capilla cerrada','Sealed chapel'], desc:['La capilla queda cerrada durante toda la expedición.','The chapel is closed throughout the expedition.'], reward:12, closeChapel:true}
+};
+const storyBreathers = {
+  4:{from:57,to:183,gap:1.13,max:3},
+  5:{from:135,to:238,gap:1.12,max:3},
+  9:{from:135,to:238,gap:1.15,max:3}
+};
+const stageSignatures = [null,'boneFan','organPipes','towLines','splitCorners','rootCage','deadHour','shelfDrop','goldenBands','falseOrbit'];
+export const environmentWarnings = [null,
+  ['Los túmulos abren un cerco.','The barrows open a ring.'],
+  ['El órgano marca los sellos.','The organ marks the seals.'],null,
+  ['El suelo se pliega en cuatro puntos.','The floor folds at four points.'],
+  ['Raíces alrededor. Sal antes de que broten.','Roots on all sides. Move before they rise.'],
+  ['Los relojes van a invertir los disparos.','The clocks are about to reverse the shots.'],
+  ['Descarga desde los estantes.','Volley from the shelves.'],
+  ['La corona barre una franja del suelo.','The crown sweeps a strip of floor.'],
+  ['Las grietas se cierran por turnos.','The rifts close in sequence.']
+];
 const fieldNotes = [
   ['En el cuaderno del barquero, la primera víctima aún paga cada madrugada el viaje de vuelta.', 'In the ferryman’s ledger, the first victim still pays for the return trip every dawn.'],
   ['Cada tumba tiene una llave. Las de los niños abren la cancela desde dentro.', 'Every grave has a key. The children’s unlock the gate from the inside.'],
@@ -109,13 +162,13 @@ const approaches = [
   ['Las copias han escrito sus nombres. El Custodio barre una franja horizontal: sal por arriba o por abajo.', 'The copies wrote their names. The Custodian sweeps a horizontal lane: escape above or below it.'],
   ['Queda decidir qué memoria cruzará. El Testigo lanza una espiral: sigue los huecos entre proyectiles.', 'One memory will cross. The Witness fires a spiral: follow the gaps between projectiles.']
 ];
-export function expeditionTime(stage, mode, length = .75) {
-  return Math.round(stage.duration * (mode === 'free' ? length : playModes[mode].length));
+export function expeditionTime(stage, mode, length = .75, oath) {
+  return Math.round(stage.duration * (mode === 'free' ? length : playModes[mode].length)*(expeditionOaths[oath]?.duration ?? 1));
 }
 export const stages = chapters.map(([name, story, feature, color, drift, optional, principal], index) => ({
   id: index, name, story, brief: approaches[index], feature, color, drift, duration: duration + index * 8,
   main: index === 0 ? 'boss' : 'warden'+index, optional: 'champion'+index,
-  pattern: bossPatterns[index], rivalPattern: bossPatterns[(index+4)%10],
+  breather: storyBreathers[index], signature: stageSignatures[index], pattern: bossPatterns[index], rivalPattern: bossPatterns[(index+4)%10],
   dispatch: {id:'signal'+index, name:['Registro perdido','Lost dispatch'], text:fieldNotes[index]},
   sites: (index === 0 ? sites : sites.map((site,i) => ({
     ...site, x: site.x + ((index*97+i*83)%171)-85, y: site.y + ((index*53+i*71)%141)-70,

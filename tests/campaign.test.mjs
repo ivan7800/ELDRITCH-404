@@ -129,3 +129,95 @@ test('snapshot resumes RNG and dynamic state, profile v1 migrates without losing
   assert.deepEqual(profile.journal,['boss','win']);
   assert.deepEqual(profile.progress.clears,[]);
 });
+
+test('the nine later story bosses prepare distinct, dodgeable second-phase attacks', () => {
+  const attacks = new Set();
+  for (const stage of stages.slice(1)) {
+    const game = new Expedition({mode:'story',stage:stage.id,seed:44});
+    const {x,y} = game.player;
+    game.boss = game.spawn(stage.main,x+150,y);
+    game.boss.hp *= .49;
+    game.bossPattern(game.boss,150);
+    game.boss.timer=0;
+    game.bossPattern(game.boss,150);
+    assert.equal(game.boss.attack,stage.signature);
+    assert.ok(game.boss.didSignature);
+    attacks.add(game.boss.attack);
+    assert.ok(game.hazards.live.length>=4);
+    assert.ok(game.hazards.live.every(hazard=>hazard.delay>=1));
+    const resumed = restore(JSON.parse(JSON.stringify(suspend(game))),Expedition);
+    assert.equal(resumed.boss.attack,stage.signature);
+    assert.equal(resumed.hazards.live.length,game.hazards.live.length);
+    resumed.boss.action='move';
+    resumed.boss.timer=0;
+    resumed.bossPattern(resumed.boss,150);
+    assert.equal(resumed.boss.attack,stage.pattern);
+  }
+  assert.equal(attacks.size,9);
+});
+
+test('oaths alter an expedition, survive a save and reward the first clear without changing the ending', () => {
+  for (const [id,reward] of [['dusk',16],['haste',16],['ash',12]]) {
+    const game = new Expedition({mode:'story',stage:2,oath:id,seed:404});
+    const chapel = game.stage.sites.find(site=>site.ritual==='heal');
+    if (id==='dusk') assert.equal(game.sanity,55);
+    if (id==='haste') assert.equal(game.duration,Math.round(game.stage.duration*.8));
+    if (id==='ash') assert.equal(game.siteAvailable(chapel),false);
+    const resumed = restore(JSON.parse(JSON.stringify(suspend(game))),Expedition);
+    assert.equal(resumed.oath,id);
+    assert.equal(resumed.duration,game.duration);
+    resumed.finish('won');
+    const profile = fresh();
+    profile.progress.clears=[0,1,2];
+    profile.progress.choices[2]='anchor';
+    record(profile,resumed);
+    assert.equal(profile.progress.pending,null);
+    assert.equal(profile.progress.choices[2],'anchor');
+    assert.equal(profile.progress.credits,16+reward);
+    assert.deepEqual(validate(JSON.parse(JSON.stringify(profile))).progress.oaths[id],[2]);
+    game.finish('won');
+    record(profile,game);
+    assert.equal(profile.progress.credits,32+reward);
+    assert.equal(game.oathReward,undefined);
+  }
+});
+
+test('astral clocks announce reversals before a live bolt turns', () => {
+  const game = new Expedition({mode:'story',stage:6,seed:44});
+  game.time = game.landmarkTimer;
+  game.hazard('bolt',200,200,0,120);
+  game.landmark();
+  assert.equal(game.hazards.live[0].vx,120);
+  assert.ok(game.events.some(event=>event.type==='landmark' && event.value===6));
+  const resumed = restore(JSON.parse(JSON.stringify(suspend(game))),Expedition);
+  resumed.time += .5;
+  resumed.updateHazards(step);
+  assert.equal(resumed.hazards.live[0].vx,120);
+  resumed.time += .5;
+  resumed.updateHazards(step);
+  assert.equal(resumed.hazards.live[0].vx,-96);
+});
+
+test('story choices affect the next expedition without stacking across chapters', () => {
+  const p = newProgress();
+  p.choices = {0:'save',1:'anchor',2:'mark'};
+  assert.equal(bonuses(p,1).vitality,8);
+  assert.equal(bonuses(p,2).guard,.06);
+  assert.equal(bonuses(p,3).power,.08);
+  assert.equal(bonuses(p,3).vitality,0);
+  assert.equal(bonuses(p).power,0);
+  const game = new Expedition({mode:'story',stage:3,seed:42,perks:bonuses(p,3)});
+  assert.equal(game.sanity,88);
+  assert.equal(restore(JSON.parse(JSON.stringify(suspend(game))),Expedition).sanity,88);
+});
+
+test('later Story upgrades offer a way to improve the current build and recover at critical health', () => {
+  const game = new Expedition({mode:'story',stage:4,seed:472});
+  game.level = 9;
+  game.arsenal = {salt:1,bell:1};
+  game.player.hp = game.player.maxHp*.28;
+  game.offerUpgrades();
+  assert.equal(game.choices.length,3);
+  assert.ok(game.choices.some(id=>game.arsenal[id]));
+  assert.ok(game.choices.includes('patch'));
+});

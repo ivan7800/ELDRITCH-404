@@ -1,4 +1,4 @@
-import { arena, enemies, lanternColors, quayLights, sites } from './content.mjs';
+import { arena, enemies, lanternColors, quayLights, signatures, sites } from './content.mjs';
 import { clamp } from './math.mjs';
 const rows = ['player','drowned','skitter','brute','seer','charger','shade','boss'];
 const TAU = Math.PI * 2;
@@ -44,6 +44,32 @@ export class Renderer {
     for (const effect of game.effects.live) {
       if (this.visible(effect,cam,2*effect.radius+40)) this.drawEffect(c,effect,game.time,reduced,false);
     }
+    for (const gem of game.gems.live) {
+      if (!this.visible(gem,cam,14)) continue;
+      const x = Math.round(gem.x/2);
+      const y = Math.round(gem.y/2);
+      c.fillStyle = '#0d1e26'; c.fillRect(x-4,y+2,8,3);
+      c.fillStyle = gem.value < 0 ? '#d97882' : contrast ? '#f7ff9f' : gem.value >= 5 ? '#9cfde6' : '#63c9bf';
+      c.beginPath(); c.moveTo(x,y-4); c.lineTo(x+3,y-1); c.lineTo(x,y+3); c.lineTo(x-3,y); c.closePath(); c.fill();
+      c.fillStyle = '#e7fedd'; c.fillRect(x-1,y-2,1,2);
+    }
+    const subjects = [
+      ...game.stage.sites.map(site => ({ ...site, site: true, used: !game.siteAvailable(site) })),
+      ...game.enemies, { ...game.player, kind: 'player' }
+    ].filter(e => this.visible(e,cam,e.site ? 150 : 85)).sort((a,b) => a.y-b.y);
+    for (const e of subjects) {
+      if (e.site) {
+        const x = Math.round(e.x/2);
+        const y = Math.round(e.y/2);
+        if (!reduced) this.glow(c,x,y-24,43,e.art==='shrine'?'#be6989':game.stage.color,e.used?.08:.22);
+        if (e.ritual && !e.used) this.ring(c,x,y,25,'#dabb89',contrast?.9:.64);
+        c.drawImage(this.assets[e.art],x-56,y-83);
+        if(e.ritual==='signal'&&!e.used) {
+          c.fillStyle='#e1bb88'; c.fillRect(x-5,y-31,10,7);
+          c.fillStyle='#1a2c33'; c.fillRect(x-3,y-29,6,1);
+        }
+      } else this.actor(c,e,game,reduced);
+    }
     const warning = contrast ? '#fff4b3' : '#ffcab2';
     for (const hazard of game.hazards.live) {
       if (!this.visible(hazard,cam,hazard.kind==='seal'?75:115)) continue;
@@ -76,37 +102,11 @@ export class Renderer {
         }
         c.fillStyle = '#452d45';
         c.fillRect(x-4,y-4,8,8);
-        c.fillStyle = '#ee83a5';
+        c.fillStyle = contrast ? '#ffe090' : '#ee83a5';
         c.fillRect(x-3,y-2,6,4);
         c.fillStyle = '#ffe1bf';
         c.fillRect(x-1,y-1,2,2);
       }
-    }
-    for (const gem of game.gems.live) {
-      if (!this.visible(gem,cam,14)) continue;
-      const x = Math.round(gem.x/2);
-      const y = Math.round(gem.y/2);
-      c.fillStyle = '#0d1e26'; c.fillRect(x-4,y+2,8,3);
-      c.fillStyle = gem.value < 0 ? '#d97882' : contrast ? '#f7ff9f' : gem.value >= 5 ? '#9cfde6' : '#63c9bf';
-      c.beginPath(); c.moveTo(x,y-4); c.lineTo(x+3,y-1); c.lineTo(x,y+3); c.lineTo(x-3,y); c.closePath(); c.fill();
-      c.fillStyle = '#e7fedd'; c.fillRect(x-1,y-2,1,2);
-    }
-    const subjects = [
-      ...game.stage.sites.map(site => ({ ...site, site: true, used: !game.siteAvailable(site) })),
-      ...game.enemies, { ...game.player, kind: 'player' }
-    ].filter(e => this.visible(e,cam,e.site ? 150 : 85)).sort((a,b) => a.y-b.y);
-    for (const e of subjects) {
-      if (e.site) {
-        const x = Math.round(e.x/2);
-        const y = Math.round(e.y/2);
-        if (!reduced) this.glow(c,x,y-24,43,e.art==='shrine'?'#be6989':game.stage.color,e.used?.08:.22);
-        if (e.ritual && !e.used) this.ring(c,x,y,25,'#dabb89',contrast?.9:.64);
-        c.drawImage(this.assets[e.art],x-56,y-83);
-        if(e.ritual==='signal'&&!e.used) {
-          c.fillStyle='#e1bb88'; c.fillRect(x-5,y-31,10,7);
-          c.fillStyle='#1a2c33'; c.fillRect(x-3,y-29,6,1);
-        }
-      } else this.actor(c,e,game,reduced);
     }
     for (const shot of game.shots.live) {
       if (!this.visible(shot,cam,48)) continue;
@@ -282,7 +282,10 @@ export class Renderer {
     const boss = !!def?.boss;
     const radius = boss ? 22 : e.kind === 'brute' ? 9 : 6.5;
     if (e.action === 'tell') {
-      if (boss) this.bossShape(c,x,y,e.attack ?? game.bossAttack(e),e.aim,25,'#ffcfaa',.96);
+      if (boss) {
+        const attack = e.attack ?? game.bossAttack(e);
+        this.bossShape(c,x,y,signatures[attack]?.shape ?? attack,e.aim,25,'#ffcfaa',.96);
+      }
       else {
         c.save();
         c.translate(x,y); c.rotate(e.aim);
@@ -324,8 +327,13 @@ export class Renderer {
       this.bossShape(c,x,y,def.pattern,0,27+arrival*12,'#b9eedb',.78*(1-arrival));
     if (boss && e.second && e.action!=='tell') {
       const phase = clamp((game.time-(e.phaseAt ?? -1))/.8,0,1);
-      if (phase<1 && !reduced) this.bossShape(c,x,y,def.pattern,e.aim,27+phase*30,'#ffadba',.9*(1-phase));
-      this.ring(c,x,y,24,'#ffadba',.58);
+      const signature = game.stage.main===e.kind && signatures[game.stage.signature];
+      const color = signature ? lanternColors[game.stage.id] : '#ffadba';
+      if (phase<1 && !reduced) {
+        this.bossShape(c,x,y,signature?.shape ?? def.pattern,e.aim,27+phase*30,color,.9*(1-phase));
+        this.glow(c,x,y-18,63,color,.34*(1-phase));
+      }
+      this.ring(c,x,y,24,color,.58);
     }
     if (def?.behavior) {
       c.fillStyle=def.color; c.fillRect(x-3,y-9,6,2);
