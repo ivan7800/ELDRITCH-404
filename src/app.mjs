@@ -78,11 +78,11 @@ function show(name) {
       const progress = tr('Capítulo ','Chapter ')+(chapter.id+1)+' / '+stages.length+' · '+loc(chapter.name);
       overlay.innerHTML = '<section class="hero"><div class="hero-art" aria-hidden="true"></div><div class="title-copy"><h1 class="visually-hidden">ELDRITCH-404</h1><div class="eyebrow">'+tr('Archivo de la expedición','Expedition archive')+'</div><p class="lede">'+tr('La bajamar dejó al descubierto una puerta. Algo la está abriendo desde dentro.','Low tide uncovered a door. Something is opening it from within.')+'</p><div class="home-actions">'+
         (pending?btn('chronicle',tr('Resolver decisión de campaña','Resolve story decision'),true):'')+
-        (suspended?btn('restore',tr('Reanudar expedición guardada','Resume suspended run'),!pending):'')+
+        (suspended?btn('restore',tr('Cargar partida','Load game'),!pending):'')+
         btn('story-brief',storyLabel(),!pending&&!suspended)+
         btn('modes',tr('Modos alternativos','Other modes'))+btn('campaign',tr('Campaña','Campaign'))+
         btn('archive',tr('Archivo','Archive'))+btn('options',tr('Opciones','Settings'))+
-        '</div><p class="hero-footer">'+progress+' · v0.9.0</p></div></section>';
+        '</div><p class="hero-footer">'+progress+' · v0.10.0</p></div></section>';
       break;
     }
     case 'campaign':
@@ -124,7 +124,8 @@ function show(name) {
     case 'pause':
       overlay.innerHTML = panel(tr('Expedición suspendida','Expedition suspended'),tr('Pausa','Paused'),
         '<p>'+tr('La marea se detiene mientras decides.','The tide waits while you decide.')+'</p>'+performanceReadout()+
-        group(btn('resume',tr('Continuar','Resume'),true)+btn('options',tr('Opciones','Settings'))+btn('suspend',tr('Guardar y salir','Save and quit'))+
+        group(btn('resume',tr('Continuar','Resume'),true)+btn('save-run',tr('Guardar partida','Save game'))+
+          btn('options',tr('Opciones','Settings'))+btn('suspend',tr('Guardar y salir','Save and quit'))+
           (game.playMode==='endless'?btn('extract',tr('Registrar marca y volver','Record score and return')):'')+btn('abandon',tr('Abandonar expedición','Abandon expedition'))));
       break;
     case 'abandon':
@@ -366,6 +367,7 @@ function displayOptions() {
     group(btn('options-back',tr('Volver','Back'),true)+btn('fullscreen',tr('Pantalla completa','Fullscreen'))+
     btn('export',tr('Exportar perfil','Export profile'))+btn('import',tr('Importar perfil','Import profile'))+
     (optionsFrom==='home'?btn('reset',tr('Borrar perfil','Erase profile')):''))+
+    '<p>'+tr('El perfil exportado conserva progreso y ajustes. La partida en curso se guarda por separado con “Guardar partida” durante la pausa y se carga desde el título.','The profile export keeps progress and settings. The current run is saved separately with “Save game” while paused and loaded from the title screen.')+'</p>'+
     '<h3>'+tr('Teclado','Keyboard')+'</h3>'+remaps('keys',s.keys,keyOptions)+
     '<h3>'+tr('Botones del mando','Gamepad buttons')+'</h3>'+remaps('pad',s.pad,padLabels.map((name,i)=>[i,name]))+
     group(btn('reset-controls',tr('Restaurar controles','Reset controls')))+
@@ -526,6 +528,12 @@ async function action(id,value) {
         storage.setItem(suspendedKey,JSON.stringify(suspend(game)));
         game=null; show('home');
       } catch { notice(tr('No se pudo guardar la expedición.','The run could not be saved.')); }
+      break;
+    case 'save-run':
+      try {
+        storage.setItem(suspendedKey,JSON.stringify(suspend(game)));
+        notice(tr('Partida guardada en este navegador.','Game saved in this browser.'));
+      } catch { notice(tr('No se pudo guardar la partida.','The game could not be saved.')); }
       break;
     case 'extract':
       if (game?.playMode==='endless' && screen==='pause') { game.finish('retired'); syncScreen(); }

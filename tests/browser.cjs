@@ -55,7 +55,8 @@ async function run() {
     assert.ok((await current()).x<before);
     await press(9);
     await page.getByRole('heading',{name:'Pausa',exact:true}).waitFor();
-    await press(13); // Navigate down to settings using D-pad.
+    await press(13); // Move from Resume to Save game.
+    await press(13); // Move from Save game to Settings.
     await press(0);
     await page.getByRole('heading',{name:'Opciones'}).waitFor();
     assert.equal(await page.evaluate(()=>document.activeElement.id),'language');
@@ -68,7 +69,7 @@ async function run() {
     await page.getByText('Gamepad disconnected',{exact:true}).waitFor();
     await page.getByRole('button',{name:'Save and quit'}).click();
     await page.reload();
-    await page.getByRole('button',{name:'Resume suspended run'}).click();
+    await page.getByRole('button',{name:'Load game'}).click();
     await page.waitForFunction(()=>window.qa.snapshot()?.mode==='play');
     const { plan, choose } = await import('./pilot.mjs');
     // Run the real game rules to the credits without mutating game state.
@@ -151,7 +152,7 @@ async function run() {
     await touch.getByRole('button',{name:'Pausa',exact:true}).tap();
     await touch.getByRole('heading',{name:'Pausa',exact:true}).waitFor();
     await touch.getByRole('button',{name:'Guardar y salir'}).tap();
-    await touch.getByRole('button',{name:'Reanudar expedición guardada'}).waitFor();
+    await touch.getByRole('button',{name:'Cargar partida'}).waitFor();
     console.log('OK · mobile: touch controls, pause and save at 390 × 844');
     assert.deepEqual(errors,[]);
   } finally {

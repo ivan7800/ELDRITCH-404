@@ -1,5 +1,12 @@
 # Cambios
 
+## 0.10.0 · Guardado a la vista
+
+- Se añade **Guardar partida** al menú de pausa. Guarda el estado exacto y permite continuar jugando.
+- **Guardar y salir** conserva la partida y vuelve al título; allí aparece **Cargar partida** cuando hay una expedición suspendida.
+- Las opciones explican que Exportar/Importar perfil conserva progreso y ajustes, mientras que la partida suspendida queda en el almacenamiento local del navegador.
+- Se amplían las pruebas para guardar durante la pausa, salir y cargar sin perder el estado de la expedición.
+
 ## 0.9.0 · Gestos en la niebla
 
 - Los doce investigadores recorren sus cuatro cuadros de animación de forma diferenciada: respiración en reposo, ciclo de carrera, pose de daño y postura de esquiva.

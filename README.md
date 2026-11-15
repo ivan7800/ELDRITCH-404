@@ -1,8 +1,8 @@
-# ELDRITCH-404 · v0.9.0
+# ELDRITCH-404 · v0.10.0
 
 Juego de acción roguelite y horror cósmico. La expedición inaugural en **Innsmouth Olvidada** incluye ayudas contextuales y dura cinco minutos hasta la llegada de la Sacristana de la Marea. Sobrevive, reúne fragmentos y derrota al jefe para obtener la credencial de veterano.
 
-La edición 0.8.0 mantiene diez escenarios ilustrados, criaturas con siluetas propias y luces cálidas entre la niebla. Los doce investigadores tienen armas iniciales y rasgos exclusivos que ahora se muestran en la preparación de cada expedición. Los registros perdidos, jefes alternativos y reliquias convierten la exploración en objetivos opcionales con recompensas persistentes.
+La edición 0.10.0 mantiene diez escenarios ilustrados, criaturas con siluetas propias y luces cálidas entre la niebla. Los doce investigadores tienen armas iniciales, rasgos exclusivos y animaciones de reposo, carrera, esquiva y ataque. La pausa incluye guardado manual; el título permite cargar la expedición guardada.
 
 En **Historia** hay diez capítulos conectados. Una victoria abre la decisión de ese capítulo y el siguiente mapa. Los rescates, las anclas y las marcas acumuladas cambian el epílogo. Puedes repetir capítulos para cambiar sus decisiones y conservar los finales descubiertos en el Cuaderno.
 
@@ -12,6 +12,7 @@ En **Historia** hay diez capítulos conectados. Una victoria abre la decisión d
 2. Pulsa **Comenzar expedición → Entrar en el muelle**. En **Modos alternativos → Modo libre** puedes acceder desde el principio a todos los mapas y personajes. La sección **Campaña** permite volver a capítulos abiertos y consultar los finales descubiertos.
 3. Aprovecha las primeras oleadas para recoger fragmentos cerca de los enemigos. Las flechas en el borde del escenario señalan los rituales o al jefe.
 4. Cambia a dificultad **Historia** desde Opciones para reducir daño, velocidad y resistencia enemiga en la siguiente partida.
+5. Pulsa **Pausa → Guardar partida** para conservar la expedición y continuar jugando, o **Guardar y salir** para volver al título. Allí aparecerá **Cargar partida**. La expedición se guarda en el almacenamiento local de ese navegador y origen; **Exportar perfil** conserva el progreso y los ajustes, pero no la partida en curso.
 
 | Acción | Teclado | Mando estándar |
 |---|---|---|

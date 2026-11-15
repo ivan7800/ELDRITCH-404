@@ -63,8 +63,11 @@ test('el HTML autónomo inicia, muestra mapas, guarda y restaura desde su interf
   browser.qa.tick(25,{x:1,y:0});
   const savedTime=browser.qa.snapshot().time;
   await click('pause');
+  await click('save-run');
+  assert.equal(browser.qa.snapshot().screen,'pause');
+  assert.match(element('notice').textContent,/Partida guardada en este navegador/);
   await click('suspend');
-  assert.match(element('overlay').innerHTML,/Reanudar expedición guardada/);
+  assert.match(element('overlay').innerHTML,/Cargar partida/);
   assert.match(menu(),/data-do="restore" class="primary"/);
   await click('story-brief');
   assert.match(menu(),/<h2>Innsmouth Olvidada/);
