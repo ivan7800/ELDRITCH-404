@@ -1,0 +1,8 @@
+{
+  "name": "eldritch-404",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": { "start": "node tools/serve.mjs --open", "build": "node tools/build.mjs", "test": "node --test tests/core.test.mjs tests/campaign.test.mjs", "test:browser": "node tests/browser.cjs" }
+}

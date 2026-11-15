@@ -1,0 +1,25 @@
+{
+  "name": "eldritch-404-desktop",
+  "productName": "ELDRITCH-404",
+  "version": "0.2.0",
+  "description": "ELDRITCH-404 desktop edition",
+  "author": "ELDRITCH-404 contributors",
+  "private": true,
+  "main": "main.cjs",
+  "scripts": {
+    "stage": "node stage.mjs",
+    "start": "npm run stage && electron .",
+    "package": "npm run stage && electron-builder --publish never"
+  },
+  "devDependencies": {
+    "electron": "^45.0.0",
+    "electron-builder": "^26.16.1"
+  },
+  "build": {
+    "appId": "com.eldritch404.game",
+    "directories": { "output": "release" },
+    "files": ["main.cjs", "game.html", "LICENSE"],
+    "win": { "target": ["nsis", "portable"], "icon": "icon.ico" },
+    "linux": { "target": ["AppImage"], "icon": "icon.png", "category": "Game" }
+  }
+}
