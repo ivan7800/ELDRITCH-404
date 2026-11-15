@@ -296,6 +296,24 @@ export const investigators = [
   [['Autómata de Latón','Brass Automaton'],'harpoon',135,.91,1.12,0,5],
   [['Profeta Sin Rostro','Faceless Prophet'],'arm7_0',88,1.02,1.23,30,9]
 ].map(([name,weapon,hp,speed,power,sanityCost,unlock],index)=>({id:index,name,weapon,hp,speed,power,sanityCost,unlock}));
+// Each investigator has a small, readable signature trait in addition to their
+// starting weapon and core stats. Keep these data-driven so the briefing and
+// simulation always describe the same benefit.
+export const investigatorTraits = [
+  {name:['Pulso firme','Steady hand'],desc:['+4 % de daño con cualquier arma.','+4% damage with every weapon.'],damage:.04},
+  {name:['Fuego de la grieta','Riftfire'],desc:['+8 % de daño; empieza con menos cordura.','+8% damage; starts with less sanity.'],damage:.08},
+  {name:['Manos de campaña','Field medic'],desc:['La capilla restaura más salud.','The chapel restores more health.'],healing:1.42},
+  {name:['Paso de resaca','Undertow step'],desc:['+7 % de velocidad al moverse.','+7% movement speed.'],speed:.07},
+  {name:['Círculo de protección','Warding circle'],desc:['Recibe un 8 % menos de daño.','Take 8% less damage.'],armor:.08},
+  {name:['Lectura de estrellas','Star reader'],desc:['Atrae fragmentos desde más lejos.','Collect fragments from farther away.'],pickup:24},
+  {name:['Sangre anfibia','Amphibious blood'],desc:['Pierde un 15 % menos de cordura en rituales.','Lose 15% less sanity from rituals.'],sanityLoss:.85},
+  {name:['Voto del eclipse','Eclipse vow'],desc:['+8 % de daño cuando la cordura cae por debajo de 56.','+8% damage while sanity is below 56.'],lowSanityDamage:.08},
+  {name:['Último responso','Last rites'],desc:['Recibe un 6 % menos de daño.','Take 6% less damage.'],armor:.06},
+  {name:['Sueño lúcido','Lucid dream'],desc:['La esquiva se recarga 0,3 s antes.','Dodge recharges 0.3 s sooner.'],dash:.3},
+  {name:['Armazón de latón','Brass frame'],desc:['Recibe un 12 % menos de daño.','Take 12% less damage.'],armor:.12},
+  {name:['Voz prestada','Borrowed voice'],desc:['+14 % de daño, pero los rituales cuestan más cordura.','+14% damage, but rituals cost more sanity.'],damage:.14,sanityLoss:1.18}
+];
+investigators.forEach((item,index)=>{ item.trait=investigatorTraits[index]; });
 
 export const relics = [];
 const relicFamilies = [

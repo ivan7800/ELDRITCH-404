@@ -37,7 +37,10 @@ async function run() {
     if (process.env.QA_SCREENSHOTS) await page.screenshot({path:join(process.env.QA_SCREENSHOTS,'title.png')});
     await press(0);
     await page.getByRole('heading',{name:'Innsmouth Olvidada'}).waitFor();
-    await press(0);
+    await page.getByRole('button',{name:'Cambiar preparación'}).click();
+    await page.getByText('Pulso firme',{exact:true}).waitFor();
+    await page.getByText('Escopeta de sal',{exact:true}).waitFor();
+    await page.getByRole('button',{name:'Entrar en el muelle'}).click();
     await page.locator('#hud').waitFor();
     await page.keyboard.down('d');
     await page.waitForTimeout(85);

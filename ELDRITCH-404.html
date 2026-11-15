@@ -90,6 +90,9 @@ kbd{font:700 .75rem var(--mono);display:inline-block;border:1px solid #607d72;pa
 .panel h3{font-size:1rem;margin:18px 0 8px;color:var(--mint)}
 .selection{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0}
 .selection button{min-height:34px;padding:6px 10px}
+.character-trait{padding:9px 11px;border-left:2px solid var(--mint);background:#101d20;color:var(--bone);font-size:.91rem;line-height:1.55}
+.character-trait span{color:var(--mint);font:700 .7rem/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase}
+.character-trait strong{color:var(--gold)}
 .selection button:disabled,.archive-grid button:disabled{opacity:.48;cursor:default}
 .archive-grid,.codex-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
 .archive-grid>div,.codex-list>li{background:#14262b;border:1px solid var(--line);padding:10px 12px}
@@ -480,6 +483,24 @@ const investigators = [
   [['Autómata de Latón','Brass Automaton'],'harpoon',135,.91,1.12,0,5],
   [['Profeta Sin Rostro','Faceless Prophet'],'arm7_0',88,1.02,1.23,30,9]
 ].map(([name,weapon,hp,speed,power,sanityCost,unlock],index)=>({id:index,name,weapon,hp,speed,power,sanityCost,unlock}));
+// Each investigator has a small, readable signature trait in addition to their
+// starting weapon and core stats. Keep these data-driven so the briefing and
+// simulation always describe the same benefit.
+const investigatorTraits = [
+  {name:['Pulso firme','Steady hand'],desc:['+4 % de daño con cualquier arma.','+4% damage with every weapon.'],damage:.04},
+  {name:['Fuego de la grieta','Riftfire'],desc:['+8 % de daño; empieza con menos cordura.','+8% damage; starts with less sanity.'],damage:.08},
+  {name:['Manos de campaña','Field medic'],desc:['La capilla restaura más salud.','The chapel restores more health.'],healing:1.42},
+  {name:['Paso de resaca','Undertow step'],desc:['+7 % de velocidad al moverse.','+7% movement speed.'],speed:.07},
+  {name:['Círculo de protección','Warding circle'],desc:['Recibe un 8 % menos de daño.','Take 8% less damage.'],armor:.08},
+  {name:['Lectura de estrellas','Star reader'],desc:['Atrae fragmentos desde más lejos.','Collect fragments from farther away.'],pickup:24},
+  {name:['Sangre anfibia','Amphibious blood'],desc:['Pierde un 15 % menos de cordura en rituales.','Lose 15% less sanity from rituals.'],sanityLoss:.85},
+  {name:['Voto del eclipse','Eclipse vow'],desc:['+8 % de daño cuando la cordura cae por debajo de 56.','+8% damage while sanity is below 56.'],lowSanityDamage:.08},
+  {name:['Último responso','Last rites'],desc:['Recibe un 6 % menos de daño.','Take 6% less damage.'],armor:.06},
+  {name:['Sueño lúcido','Lucid dream'],desc:['La esquiva se recarga 0,3 s antes.','Dodge recharges 0.3 s sooner.'],dash:.3},
+  {name:['Armazón de latón','Brass frame'],desc:['Recibe un 12 % menos de daño.','Take 12% less damage.'],armor:.12},
+  {name:['Voz prestada','Borrowed voice'],desc:['+14 % de daño, pero los rituales cuestan más cordura.','+14% damage, but rituals cost more sanity.'],damage:.14,sanityLoss:1.18}
+];
+investigators.forEach((item,index)=>{ item.trait=investigatorTraits[index]; });
 
 const relics = [];
 const relicFamilies = [
@@ -508,7 +529,7 @@ arsenalFamilies.forEach(([family],index)=>modifiers.forEach(([stat,es,en,value],
   fieldUpgrades.push(id);
 }));
 
-return {imageAsset,sceneFile,atlasCell,actorAtlases,faunaMotion,portraitNotes,arena,duration,step,defaultKeys,defaultPad,weapons,harbourWeaponHints,upgrades,enemies,quayLights,quayMoorings,lanternColors,sites,waves,playModes,bossTells,signatures,expeditionOaths,environmentWarnings,bossPatterns,expeditionTime,stages,bestiary,creaturePortrait,stageWaves,investigators,relics,fieldUpgrades};
+return {imageAsset,sceneFile,atlasCell,actorAtlases,faunaMotion,portraitNotes,arena,duration,step,defaultKeys,defaultPad,weapons,harbourWeaponHints,upgrades,enemies,quayLights,quayMoorings,lanternColors,sites,waves,playModes,bossTells,signatures,expeditionOaths,environmentWarnings,bossPatterns,expeditionTime,stages,bestiary,creaturePortrait,stageWaves,investigators,investigatorTraits,relics,fieldUpgrades};
 })();
 modules.math = (() => {
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
@@ -779,6 +800,7 @@ class Expedition {
   get harbourStory() { return this.stage.id===0 && this.config.mode==='story'; }
   get floodedBeacon() { return this.harbourStory && this.tide()!=='low'; }
   changeSanity(delta) {
+    if (delta < 0) delta *= this.character.trait?.sanityLoss ?? 1;
     const before = this.sanity;
     this.sanity = clamp(before+delta,0,100);
     if (before>28 && this.sanity<=28) this.emit('sanity-low',28);
@@ -840,12 +862,12 @@ class Expedition {
     }
     if (input.dash && p.dashCooldown === 0) {
       p.dash = .19;
-      p.dashCooldown = Math.max(1.25,3-this.mod('charge')-(this.character.id===9?.42:0));
+      p.dashCooldown = Math.max(1.25,3-this.mod('charge')-(this.character.trait?.dash ?? 0));
       this.effect('ring', p.x, p.y, 24, '#b7f5e3', .22);
       this.emit('dash');
     }
     const speed = p.dash ? 328 : (length > .01 ? Math.min(length, 1) * (118 + 13 * (this.passives.boots ?? 0)) *
-      this.character.speed*(1+(this.perks.speed??0)+this.mod('fleet')+(this.sanity<=28?.08:0)) : 0);
+      this.character.speed*(1+(this.perks.speed??0)+this.mod('fleet')+(this.sanity<=28?.08:0)+(this.character.trait?.speed??0)) : 0);
     p.x = clamp(p.x + p.dx * speed * dt, 24, arena.width - 24);
     p.y = clamp(p.y + p.dy * speed * dt, 24, arena.height - 24);
     const current = this.current();
@@ -882,7 +904,7 @@ class Expedition {
       this.emit('discovery',this.stage.id);
     }
     if (ritual === 'heal') {
-      p.hp = Math.min(p.maxHp, p.hp + (this.character.id===2?60:42));
+      p.hp = Math.min(p.maxHp, p.hp + (this.character.id===2?60:42)*(this.character.trait?.healing??1));
       this.changeSanity(22);
     }
     if (ritual === 'gather') {
@@ -1207,7 +1229,7 @@ class Expedition {
   hurt(amount) {
     const p = this.player;
     if (p.hurt || p.dash) return false;
-    const resistance = Math.min(.62,(this.perks.guard??0)+this.mod('armor')+(this.mutation==='husk'?.16:0));
+    const resistance = Math.min(.62,(this.perks.guard??0)+this.mod('armor')+(this.character.trait?.armor??0)+(this.mutation==='husk'?.16:0));
     p.hp = Math.max(0, p.hp - Math.round(amount * (this.difficulty === 'story' ? .66 : 1)*(1-resistance)));
     if (this.expanded && this.character.id===11 && this.sanity>16) this.changeSanity(-Math.min(2,this.sanity-16));
     p.hurt = .57;
@@ -1228,7 +1250,8 @@ class Expedition {
     if (enemy.hp <= 0) return;
     const critical = this.random() < .085+this.mod('focus');
     const multiplier = (1 + (this.passives.resin ?? 0)*.12+(this.perks.power??0)) *
-      (this.mutation===true ? 1.28 : 1) * this.character.power * (enemy.shield>this.time?.53:1) *
+      (this.mutation===true ? 1.28 : 1) * this.character.power * (1+(this.character.trait?.damage??0)+
+      (this.sanity<56?(this.character.trait?.lowSanityDamage??0):0)) * (enemy.shield>this.time?.53:1) *
       (this.sanity<=28?1.16:1);
     enemy.hp -= Math.round(amount * multiplier * (critical ? 1.65 : 1));
     enemy.flash = .115;
@@ -1464,7 +1487,8 @@ class Expedition {
   }
   collect(dt) {
     const p = this.player;
-    const radius = 44 + (this.passives.prayer ?? 0)*14 + (this.perks.reach ?? 0) + this.mod('pickup') + (this.mutation==='flow'?27:0);
+    const radius = 44 + (this.passives.prayer ?? 0)*14 + (this.perks.reach ?? 0) + this.mod('pickup') +
+      (this.character.trait?.pickup??0) + (this.mutation==='flow'?27:0);
     for (let i = this.gems.live.length - 1; i >= 0; i--) {
       const gem = this.gems.live[i];
       const distance = Math.sqrt(distance2(gem, p));
@@ -2451,7 +2475,7 @@ function show(name) {
         btn('story-brief',storyLabel(),!pending&&!suspended)+
         btn('modes',tr('Modos alternativos','Other modes'))+btn('campaign',tr('Campaña','Campaign'))+
         btn('archive',tr('Archivo','Archive'))+btn('options',tr('Opciones','Settings'))+
-        '</div><p class="hero-footer">'+progress+' · v0.7.0</p></div></section>';
+        '</div><p class="hero-footer">'+progress+' · v0.8.0</p></div></section>';
       break;
     }
     case 'campaign':
@@ -2626,6 +2650,8 @@ function displayBrief() {
     '<h3>'+tr('Investigador','Investigator')+'</h3><div class="selection">'+roster.join('')+'</div>'+
     '<p>'+char.hp+' HP · '+Math.round(char.speed*100)+'% '+tr('velocidad','speed')+
     ' · '+Math.round(char.power*100)+'% '+tr('potencia','power')+' · '+(100-char.sanityCost)+'% '+tr('cordura','sanity')+'</p>'+
+    '<p class="character-trait"><span>'+tr('Rasgo','Signature trait')+' · </span><strong>'+loc(char.trait.name)+'</strong> · '+loc(char.trait.desc)+'</p>'+
+    '<p>'+tr('Arma inicial','Starting weapon')+' · <strong>'+loc(weapons[char.weapon].name)+'</strong> · '+loc(weapons[char.weapon].desc)+'</p>'+
     (!story ? '<h3>'+tr('Encuentro','Encounter')+'</h3>'+group(pick('pick-rival',0,loc(enemies[stage.main].name),!selected.rival)+
       pick('pick-rival',1,loc(enemies[stage.optional].name),selected.rival)) : '')+
     (free ? '<h3>'+tr('Duración','Duration')+'</h3>'+group(pick('pick-length',.5,tr('Corta','Short'),selected.length===.5)+pick('pick-length',.75,tr('Media','Medium'),selected.length===.75)+pick('pick-length',1.35,tr('Larga','Long'),selected.length===1.35)) : '')+

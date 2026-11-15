@@ -55,6 +55,7 @@ export class Expedition {
   get harbourStory() { return this.stage.id===0 && this.config.mode==='story'; }
   get floodedBeacon() { return this.harbourStory && this.tide()!=='low'; }
   changeSanity(delta) {
+    if (delta < 0) delta *= this.character.trait?.sanityLoss ?? 1;
     const before = this.sanity;
     this.sanity = clamp(before+delta,0,100);
     if (before>28 && this.sanity<=28) this.emit('sanity-low',28);
@@ -116,12 +117,12 @@ export class Expedition {
     }
     if (input.dash && p.dashCooldown === 0) {
       p.dash = .19;
-      p.dashCooldown = Math.max(1.25,3-this.mod('charge')-(this.character.id===9?.42:0));
+      p.dashCooldown = Math.max(1.25,3-this.mod('charge')-(this.character.trait?.dash ?? 0));
       this.effect('ring', p.x, p.y, 24, '#b7f5e3', .22);
       this.emit('dash');
     }
     const speed = p.dash ? 328 : (length > .01 ? Math.min(length, 1) * (118 + 13 * (this.passives.boots ?? 0)) *
-      this.character.speed*(1+(this.perks.speed??0)+this.mod('fleet')+(this.sanity<=28?.08:0)) : 0);
+      this.character.speed*(1+(this.perks.speed??0)+this.mod('fleet')+(this.sanity<=28?.08:0)+(this.character.trait?.speed??0)) : 0);
     p.x = clamp(p.x + p.dx * speed * dt, 24, arena.width - 24);
     p.y = clamp(p.y + p.dy * speed * dt, 24, arena.height - 24);
     const current = this.current();
@@ -158,7 +159,7 @@ export class Expedition {
       this.emit('discovery',this.stage.id);
     }
     if (ritual === 'heal') {
-      p.hp = Math.min(p.maxHp, p.hp + (this.character.id===2?60:42));
+      p.hp = Math.min(p.maxHp, p.hp + (this.character.id===2?60:42)*(this.character.trait?.healing??1));
       this.changeSanity(22);
     }
     if (ritual === 'gather') {
@@ -483,7 +484,7 @@ export class Expedition {
   hurt(amount) {
     const p = this.player;
     if (p.hurt || p.dash) return false;
-    const resistance = Math.min(.62,(this.perks.guard??0)+this.mod('armor')+(this.mutation==='husk'?.16:0));
+    const resistance = Math.min(.62,(this.perks.guard??0)+this.mod('armor')+(this.character.trait?.armor??0)+(this.mutation==='husk'?.16:0));
     p.hp = Math.max(0, p.hp - Math.round(amount * (this.difficulty === 'story' ? .66 : 1)*(1-resistance)));
     if (this.expanded && this.character.id===11 && this.sanity>16) this.changeSanity(-Math.min(2,this.sanity-16));
     p.hurt = .57;
@@ -504,7 +505,8 @@ export class Expedition {
     if (enemy.hp <= 0) return;
     const critical = this.random() < .085+this.mod('focus');
     const multiplier = (1 + (this.passives.resin ?? 0)*.12+(this.perks.power??0)) *
-      (this.mutation===true ? 1.28 : 1) * this.character.power * (enemy.shield>this.time?.53:1) *
+      (this.mutation===true ? 1.28 : 1) * this.character.power * (1+(this.character.trait?.damage??0)+
+      (this.sanity<56?(this.character.trait?.lowSanityDamage??0):0)) * (enemy.shield>this.time?.53:1) *
       (this.sanity<=28?1.16:1);
     enemy.hp -= Math.round(amount * multiplier * (critical ? 1.65 : 1));
     enemy.flash = .115;
@@ -740,7 +742,8 @@ export class Expedition {
   }
   collect(dt) {
     const p = this.player;
-    const radius = 44 + (this.passives.prayer ?? 0)*14 + (this.perks.reach ?? 0) + this.mod('pickup') + (this.mutation==='flow'?27:0);
+    const radius = 44 + (this.passives.prayer ?? 0)*14 + (this.perks.reach ?? 0) + this.mod('pickup') +
+      (this.character.trait?.pickup??0) + (this.mutation==='flow'?27:0);
     for (let i = this.gems.live.length - 1; i >= 0; i--) {
       const gem = this.gems.live[i];
       const distance = Math.sqrt(distance2(gem, p));

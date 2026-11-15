@@ -1,5 +1,12 @@
 # Cambios
 
+## 0.8.0 · Doce voces en la niebla
+
+- Los doce investigadores tienen un rasgo de juego propio, además de arma inicial y estadísticas. Sus efectos se aplican realmente en combate, rituales, esquiva, curación, protección, cordura o recogida de fragmentos.
+- La preparación de expedición explica el rasgo y el arma seleccionados en español e inglés, junto con las estadísticas del personaje.
+- Se conserva la campaña de diez capítulos y sus objetivos opcionales: registros perdidos, jefes rivales y reliquias permanentes.
+- Se amplían las pruebas para comprobar rasgos bilingües y sus efectos en la simulación.
+
 ## 0.7.0 · Faroles en la niebla
 
 - Diez fondos ilustrados con luz cálida, agua, bruma y materiales propios de cada capítulo. Innsmouth tiene reflejos, oleaje y estelas al cruzar la crecida.

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Expedition } from '../src/simulation.mjs';
-import { arena, duration, step, weapons, stages } from '../src/content.mjs';
+import { arena, duration, step, weapons, stages, investigators } from '../src/content.mjs';
 import { Pool, SpatialGrid } from '../src/math.mjs';
 import { fresh, save, load, key, record, validate, suspend, restore } from '../src/storage.mjs';
 import { choose, plan } from './pilot.mjs';
@@ -17,6 +17,22 @@ test('normalized diagonal movement, analog input and boundaries', () => {
   g.player.x = arena.width-24;
   g.update(step,{x:1});
   assert.equal(g.player.x,arena.width-24);
+});
+test('all investigators expose a bilingual signature trait and traits affect play', () => {
+  assert.equal(investigators.length,12);
+  assert.ok(investigators.every(person=>person.trait?.name?.length===2&&person.trait?.desc?.length===2));
+  const guarded = new Expedition({mode:'free',character:4,seed:18});
+  guarded.hurt(100);
+  assert.equal(guarded.player.hp,guarded.player.maxHp-92);
+  const dreamer = new Expedition({mode:'free',character:9,seed:18});
+  dreamer.update(step,{x:1,dash:true});
+  assert.equal(dreamer.player.dashCooldown,2.7);
+  const amphibia = new Expedition({mode:'free',character:6,seed:18});
+  amphibia.changeSanity(-20);
+  assert.equal(amphibia.sanity,68);
+  const prophet = new Expedition({mode:'free',character:11,seed:18});
+  prophet.changeSanity(-20);
+  assert.ok(Math.abs(prophet.sanity-46.4)<1e-9);
 });
 test('contact, dodge, iframes and loss', () => {
   const g = new Expedition({seed:404});

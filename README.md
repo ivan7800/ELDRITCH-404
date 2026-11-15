@@ -1,8 +1,8 @@
-# ELDRITCH-404 · v0.7.0
+# ELDRITCH-404 · v0.8.0
 
 Juego de acción roguelite y horror cósmico. La expedición inaugural en **Innsmouth Olvidada** incluye ayudas contextuales y dura cinco minutos hasta la llegada de la Sacristana de la Marea. Sobrevive, reúne fragmentos y derrota al jefe para obtener la credencial de veterano.
 
-La edición 0.7.0 trae diez escenarios ilustrados, siluetas de horror cósmico y luces cálidas entre la niebla. Las criaturas descubiertas se pueden consultar en el bestiario ilustrado.
+La edición 0.8.0 mantiene diez escenarios ilustrados, criaturas con siluetas propias y luces cálidas entre la niebla. Los doce investigadores tienen armas iniciales y rasgos exclusivos que ahora se muestran en la preparación de cada expedición. Los registros perdidos, jefes alternativos y reliquias convierten la exploración en objetivos opcionales con recompensas persistentes.
 
 En **Historia** hay diez capítulos conectados. Una victoria abre la decisión de ese capítulo y el siguiente mapa. Los rescates, las anclas y las marcas acumuladas cambian el epílogo. Puedes repetir capítulos para cambiar sus decisiones y conservar los finales descubiertos en el Cuaderno.
 

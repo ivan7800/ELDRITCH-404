@@ -1,14 +1,15 @@
-# Verificación de ELDRITCH-404 v0.7.0
+# Verificación de ELDRITCH-404 v0.8.0
 
 | Comprobación | Resultado |
 |---|---|
-| Base | v0.6.0, `52a1cc3`. |
-| Simulación | 34 pruebas correctas. Cubren 20 jefes, seis condiciones de final, juramentos, modos alternativos, restauración de expediciones y migración de perfil. |
-| Arte y renderizado | Se decodificaron los diez fondos. Las 33 celdas de las tres láminas tienen contenido y transparencia exterior. Diez cuadros distintos, prueba de carga con 225 enemigos y revisión de combate, avisos y navegación en modo de efectos reducidos. |
-| Interfaz | Bestiario con 65 fichas y notas en vista táctil de 390 × 844, con retratos servidos tanto en la versión web como en el HTML portátil. |
-| Compilación | Tres pruebas correctas del HTML integrado, restauración y recursos de precaché. |
-| Navegador | Campaña completa de diez capítulos, decisiones tras recargar y epílogo «La costa del amanecer». Teclado, mando simulado, táctil, PWA sin conexión y arranque portátil desde `file://`. |
-| Actualización PWA | Una expedición suspendida en v0.6.0 se reanudó en v0.7.0 tras actualizar en subruta. La instalación actualizada volvió a cargar sin red. |
+| Base | v0.7.0, árbol `eb5ac6f`. |
+| Investigadores | Doce rasgos bilingües visibles en la preparación; pruebas de protección, esquiva y coste de cordura. |
+| Simulación | 35 pruebas correctas. Cubren campaña de diez capítulos, 20 jefes, seis finales, juramentos, modos, rasgos, restauración y migración de perfil. |
+| Arte y renderizado | Se decodificaron los diez fondos. Las 33 celdas de las tres láminas tienen contenido y transparencia exterior. Diez cuadros distintos; carga con 225 enemigos y revisión de combate, avisos y alto contraste. |
+| Interfaz | Bestiario con 65 fichas y notas. La preparación muestra el arma y el rasgo exclusivo del personaje. Vista móvil de 390 × 844. |
+| Compilación | `npm run build` y tres pruebas correctas del HTML integrado, guardado y recursos de precaché. |
+| Navegador | Campaña de diez capítulos y epílogo; mando simulado, teclado, táctil, PWA instalada y sin conexión, y arranque portátil desde `file://`. |
+| Rendimiento simulado | Victoria en 309,87 s, 1.377 bajas, pico de 33 enemigos, carga de prueba con 225 enemigos y p95 de 1,17 ms en el renderizador aislado. |
 | Hardware | Pendientes mando físico y mediciones en Steam Deck. |
 
 Para repetir las pruebas, ejecuta `npm test`, `npm run build`, `node --test tests/build.test.mjs`, `node tests/render.cjs`, `npm run test:browser` y `node tests/browser-campaign.cjs`. Usa `CHROMIUM_PATH` para seleccionar un binario instalado.

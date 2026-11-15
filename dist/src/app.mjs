@@ -82,7 +82,7 @@ function show(name) {
         btn('story-brief',storyLabel(),!pending&&!suspended)+
         btn('modes',tr('Modos alternativos','Other modes'))+btn('campaign',tr('Campaña','Campaign'))+
         btn('archive',tr('Archivo','Archive'))+btn('options',tr('Opciones','Settings'))+
-        '</div><p class="hero-footer">'+progress+' · v0.7.0</p></div></section>';
+        '</div><p class="hero-footer">'+progress+' · v0.8.0</p></div></section>';
       break;
     }
     case 'campaign':
@@ -257,6 +257,8 @@ function displayBrief() {
     '<h3>'+tr('Investigador','Investigator')+'</h3><div class="selection">'+roster.join('')+'</div>'+
     '<p>'+char.hp+' HP · '+Math.round(char.speed*100)+'% '+tr('velocidad','speed')+
     ' · '+Math.round(char.power*100)+'% '+tr('potencia','power')+' · '+(100-char.sanityCost)+'% '+tr('cordura','sanity')+'</p>'+
+    '<p class="character-trait"><span>'+tr('Rasgo','Signature trait')+' · </span><strong>'+loc(char.trait.name)+'</strong> · '+loc(char.trait.desc)+'</p>'+
+    '<p>'+tr('Arma inicial','Starting weapon')+' · <strong>'+loc(weapons[char.weapon].name)+'</strong> · '+loc(weapons[char.weapon].desc)+'</p>'+
     (!story ? '<h3>'+tr('Encuentro','Encounter')+'</h3>'+group(pick('pick-rival',0,loc(enemies[stage.main].name),!selected.rival)+
       pick('pick-rival',1,loc(enemies[stage.optional].name),selected.rival)) : '')+
     (free ? '<h3>'+tr('Duración','Duration')+'</h3>'+group(pick('pick-length',.5,tr('Corta','Short'),selected.length===.5)+pick('pick-length',.75,tr('Media','Medium'),selected.length===.75)+pick('pick-length',1.35,tr('Larga','Long'),selected.length===1.35)) : '')+
