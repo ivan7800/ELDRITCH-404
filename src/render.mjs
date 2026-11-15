@@ -1,4 +1,4 @@
-import { actorAtlases, arena, atlasCell, creaturePortrait, enemies, faunaMotion, imageAsset, lanternColors, quayLights, quayMoorings, sceneFile, signatures, stages, sites } from './content.mjs';
+import { actorAtlases, arena, atlasCell, creaturePortrait, enemies, faunaMotion, imageAsset, lanternColors, quayLights, quayMoorings, sceneFile, signatures, stages, sites, weapons } from './content.mjs';
 import { clamp } from './math.mjs';
 const rows = ['player','drowned','skitter','brute','seer','charger','shade','boss'];
 const TAU = Math.PI * 2;
@@ -330,13 +330,15 @@ export class Renderer {
     }
     c.fillStyle = '#0810179f';
     c.beginPath(); c.ellipse(x,y,radius,Math.max(2,radius*.31),0,0,TAU); c.fill();
-    const frame = hero && !e.walk ? 0 : Math.floor(game.time*(boss?(e.second?11:7):9) + (e.id ?? 0)%4) % 4;
+    const frame = hero ? e.dash ? 3 : e.hurt ? 2 : e.attack>0 ? 2+Math.floor((.2-e.attack)*10)%2 :
+      e.walk ? Math.floor(game.time*11)%4 : Math.floor(game.time*2.2)%2 :
+      Math.floor(game.time*(boss?(e.second?11:7):9) + (e.id ?? 0)%4) % 4;
     const portrait = hero ? {atlas:'portraits',cell:0} : creaturePortrait(e.kind);
     const atlas = hero && game.character.id>0 ? null : this.assets[portrait.atlas];
     const size = hero ? (atlas?40:48) : boss ? (e.second ? 78 : 68) :
       portrait.cell===2 ? 46 : portrait.cell===1 ? 28 : 36;
     const [rate,bounce,stretch] = gait[boss?'boss':hero?'stride':faunaMotion[portrait.cell]];
-    const motion = reduced || (hero&&!e.walk) ? 0 : Math.sin(game.time*rate+(e.id??0)*1.91);
+    const motion = reduced ? 0 : hero&&!e.walk ? Math.sin(game.time*2.4)*.22 : Math.sin(game.time*rate+(e.id??0)*1.91);
     c.save();
     const arrival = clamp((game.time-(e.spawnedAt ?? -1))/.65,0,1);
     if (e.kind==='boss' && e.second && !reduced) {
@@ -351,8 +353,9 @@ export class Renderer {
       c.translate(-x,-y);
     }
     const entrance = boss && !reduced ? (1-arrival)*16 : 0;
-    c.translate(x,Math.round(y+3-entrance+motion*bounce));
+    c.translate(x,Math.round(y+3-entrance+motion*(hero&&!e.walk?1.1:bounce)));
     c.scale(((hero ? e.dx : e.facing) < 0 ? -1 : 1)*(1+motion*stretch),1-motion*stretch*.65);
+    if (hero && e.dash && !reduced) c.rotate(-e.dx*.18);
     c.globalAlpha = e.kind === 'shade' ? .78 : boss&&!reduced ? .72+arrival*.28 : 1;
     if (!reduced && (e.flash || (hero && e.hurt))) c.filter = hero ? 'brightness(1.3) saturate(0.4)' : 'brightness(1.65)';
     const castRow = hero?game.character.id : boss&&e.kind!=='boss' ? e.kind.startsWith('champion')?12+def.stage:21+def.stage : -1;
@@ -364,6 +367,7 @@ export class Renderer {
     } else {
       c.drawImage(original?this.assets.sprites:this.assets.cast,frame*64,row*68,64,68,-Math.round(size/2),-size,size,size);
     }
+    if (hero && e.attack>0 && !reduced) this.weaponFlourish(c,e,game,size);
     c.restore();
     if (boss && e.action!=='tell' && !reduced && arrival<1)
       this.bossShape(c,x,y,def.pattern,0,27+arrival*12,'#b9eedb',.78*(1-arrival));
@@ -386,6 +390,30 @@ export class Renderer {
       c.fillStyle = '#10171e'; c.fillRect(x-6,y-size+1,12,2);
       c.fillStyle = enemies[e.kind].color; c.fillRect(x-6,y-size+1,Math.ceil(12*e.hp/e.maxHp),1);
     }
+  }
+  weaponFlourish(c,player,game,size) {
+    const id=player.attackKind ?? game.character.weapon;
+    const weapon=weapons[id];
+    if (!weapon) return;
+    const strength=clamp(player.attack/.2,0,1);
+    const color=weapon.color;
+    const family=weapon.family ?? id;
+    c.save();
+    c.globalAlpha=.82*strength;
+    c.strokeStyle=color; c.fillStyle=color; c.lineWidth=1.5;
+    if (family==='bell' || family==='pulse') {
+      c.beginPath(); c.arc(3,-9,12+(1-strength)*6,-1.05,1.05); c.stroke();
+      c.fillRect(1,-12,3,7);
+    } else if (family==='fan' || family==='salt') {
+      c.beginPath(); c.moveTo(4,-12); c.lineTo(19,-18); c.moveTo(5,-9); c.lineTo(22,-9); c.moveTo(4,-6); c.lineTo(19,0); c.stroke();
+      c.fillRect(20,-19,2,2); c.fillRect(23,-10,2,2); c.fillRect(20,-1,2,2);
+    } else if (family==='trap' || family==='mine') {
+      c.translate(2,-3); c.rotate(-.3); c.strokeRect(4,-3,7,7); c.beginPath(); c.moveTo(5,-5); c.lineTo(8,-9); c.lineTo(11,-5); c.stroke();
+    } else {
+      c.beginPath(); c.moveTo(3,-8); c.lineTo(size*.48,-12); c.lineTo(size*.57,-10); c.stroke();
+      c.beginPath(); c.arc(size*.3,-8,9,-.9,.75); c.stroke();
+    }
+    c.restore();
   }
   bossShape(c,x,y,pattern,aim,r,color,alpha) {
     c.save();

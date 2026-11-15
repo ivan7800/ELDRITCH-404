@@ -1,7 +1,8 @@
-# Verificación de ELDRITCH-404 v0.8.0
+# Verificación de ELDRITCH-404 v0.9.0
 
 | Comprobación | Resultado |
 |---|---|
+| Animación | Doce filas de investigador usan cuadros de reposo, carrera, daño y esquiva; el gesto de ataque toma el arma activa. Render comprobado para los diez escenarios y carga máxima de 225 enemigos. |
 | Base | v0.7.0, árbol `eb5ac6f`. |
 | Investigadores | Doce rasgos bilingües visibles en la preparación; pruebas de protección, esquiva y coste de cordura. |
 | Simulación | 35 pruebas correctas. Cubren campaña de diez capítulos, 20 jefes, seis finales, juramentos, modos, rasgos, restauración y migración de perfil. |

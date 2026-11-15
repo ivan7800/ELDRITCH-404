@@ -1,5 +1,12 @@
 # Cambios
 
+## 0.9.0 · Gestos en la niebla
+
+- Los doce investigadores recorren sus cuatro cuadros de animación de forma diferenciada: respiración en reposo, ciclo de carrera, pose de daño y postura de esquiva.
+- Cada disparo activa una breve animación de ataque con formas y color según el arma o familia equipada. Los avisos de jefes y criaturas permanecen legibles.
+- El estado breve del ataque se conserva al suspender y reanudar una expedición.
+- Se actualiza la versión web, portátil y de escritorio.
+
 ## 0.8.0 · Doce voces en la niebla
 
 - Los doce investigadores tienen un rasgo de juego propio, además de arma inicial y estadísticas. Sus efectos se aplican realmente en combate, rituales, esquiva, curación, protección, cordura o recogida de fragmentos.

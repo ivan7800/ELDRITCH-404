@@ -67,6 +67,7 @@ export class Expedition {
     if (this.mode !== 'play') return;
     const previousTime = this.time;
     this.time += dt;
+    this.player.attack = Math.max(0,(this.player.attack??0)-dt);
     if (this.harbourStory && this.tide()!==this.tide(previousTime)) this.emit('harbour-tide',this.tide());
     if (this.config.guide) {
       for (const [at,cue] of [[.35,'move'],[4,'fragments'],[10,'dash'],[19,'ritual']]) {
@@ -551,6 +552,7 @@ export class Expedition {
       if (!target && key !== 'mine') continue;
       const angle = key==='harpoon' && this.harbourStory ? this.harpoonAim(target) : target ? angleTo(p, target) : Math.atan2(p.dy, p.dx);
       this.cooldowns[key] = weapon.cooldown * (1 - .07 * (rank - 1));
+      p.attack = .2; p.attackKind = key;
       this.emit('fire', key);
       switch (key) {
         case 'salt':
@@ -597,6 +599,7 @@ export class Expedition {
     const push = .19+this.mod('push',family);
     const count = 1 + style%3 + Number(!!evolves);
     this.cooldowns[id] = weapon.cooldown * Math.max(.47,1-.09*rank-this.mod('cadence',family));
+    p.attack = .2; p.attackKind = id;
     this.emit('fire',id);
     switch (family) {
       case 'fan':

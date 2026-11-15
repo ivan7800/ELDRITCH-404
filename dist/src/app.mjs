@@ -82,7 +82,7 @@ function show(name) {
         btn('story-brief',storyLabel(),!pending&&!suspended)+
         btn('modes',tr('Modos alternativos','Other modes'))+btn('campaign',tr('Campaña','Campaign'))+
         btn('archive',tr('Archivo','Archive'))+btn('options',tr('Opciones','Settings'))+
-        '</div><p class="hero-footer">'+progress+' · v0.8.0</p></div></section>';
+        '</div><p class="hero-footer">'+progress+' · v0.9.0</p></div></section>';
       break;
     }
     case 'campaign':

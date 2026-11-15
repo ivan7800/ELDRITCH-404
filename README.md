@@ -1,4 +1,4 @@
-# ELDRITCH-404 · v0.8.0
+# ELDRITCH-404 · v0.9.0
 
 Juego de acción roguelite y horror cósmico. La expedición inaugural en **Innsmouth Olvidada** incluye ayudas contextuales y dura cinco minutos hasta la llegada de la Sacristana de la Marea. Sobrevive, reúne fragmentos y derrota al jefe para obtener la credencial de veterano.
 

@@ -34,6 +34,17 @@ test('all investigators expose a bilingual signature trait and traits affect pla
   prophet.changeSanity(-20);
   assert.ok(Math.abs(prophet.sanity-46.4)<1e-9);
 });
+test('weapon fire triggers a resumable investigator attack pose', () => {
+  const game=new Expedition({mode:'free',seed:77});
+  game.arsenal={salt:1};
+  game.spawn('brute',game.player.x+48,game.player.y);
+  game.update(step);
+  assert.equal(game.player.attackKind,'salt');
+  assert.ok(game.player.attack>0);
+  const resumed=restore(JSON.parse(JSON.stringify(suspend(game))),Expedition);
+  assert.equal(resumed.player.attackKind,'salt');
+  assert.equal(resumed.player.attack,game.player.attack);
+});
 test('contact, dodge, iframes and loss', () => {
   const g = new Expedition({seed:404});
   const p = g.player;
