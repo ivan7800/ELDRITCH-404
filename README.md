@@ -1,6 +1,8 @@
-# ELDRITCH-404 · v0.6.0
+# ELDRITCH-404 · v0.7.0
 
 Juego de acción roguelite y horror cósmico. La expedición inaugural en **Innsmouth Olvidada** incluye ayudas contextuales y dura cinco minutos hasta la llegada de la Sacristana de la Marea. Sobrevive, reúne fragmentos y derrota al jefe para obtener la credencial de veterano.
+
+La edición 0.7.0 trae diez escenarios ilustrados, siluetas de horror cósmico y luces cálidas entre la niebla. Las criaturas descubiertas se pueden consultar en el bestiario ilustrado.
 
 En **Historia** hay diez capítulos conectados. Una victoria abre la decisión de ese capítulo y el siguiente mapa. Los rescates, las anclas y las marcas acumuladas cambian el epílogo. Puedes repetir capítulos para cambiar sus decisiones y conservar los finales descubiertos en el Cuaderno.
 
@@ -49,7 +51,7 @@ npm start
 
 `npm run build` actualiza el HTML autocontenido y construye `dist/` con la versión web y la caché offline. `npm start` sirve en `http://127.0.0.1:4040`. Para servir exactamente la compilación, usa `ELDRITCH_WEB_ROOT=dist node tools/serve.mjs` en Bash o asigna `$env:ELDRITCH_WEB_ROOT='dist'` en PowerShell y ejecuta `node tools/serve.mjs`.
 
-El juego carece de dependencias de ejecución. Para pruebas opcionales, instala `playwright` y `@napi-rs/canvas` como herramientas de desarrollo (`npm install --no-save playwright @napi-rs/canvas`), prepara Chromium con `npx playwright install chromium` y ejecuta `npm run test:browser`, `node tests/browser-campaign.cjs` y `node tests/render.cjs`. `CHROMIUM_PATH` permite usar un Chromium instalado. Para regenerar PNG, usa `python3 tools/art.py` con Pillow.
+El juego carece de dependencias de ejecución. Para pruebas opcionales, instala `playwright` y `@napi-rs/canvas` como herramientas de desarrollo (`npm install --no-save playwright @napi-rs/canvas`), prepara Chromium con `npx playwright install chromium` y ejecuta `npm run test:browser`, `node tests/browser-campaign.cjs` y `node tests/render.cjs`. `CHROMIUM_PATH` permite usar un Chromium instalado. Para regenerar los iconos y las láminas clásicas, usa `python3 tools/art.py` con Pillow. Los fondos y retratos de la edición actual se incluyen ya optimizados en `assets/`.
 
 ## Perfiles
 

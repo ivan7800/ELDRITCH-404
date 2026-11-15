@@ -3,7 +3,7 @@ import { Renderer } from './render.mjs';
 import { Input } from './input.mjs';
 import { Sound } from './audio.mjs';
 import { load, save, fresh, validate, record, key, suspendedKey, suspend, restore } from './storage.mjs';
-import { defaultKeys, defaultPad, weapons, upgrades, enemies, step, investigators, stages, playModes, relics, bestiary, bossTells, environmentWarnings, expeditionOaths, expeditionTime, harbourWeaponHints, signatures } from './content.mjs';
+import { actorAtlases, creaturePortrait, imageAsset, portraitNotes, sceneFile, defaultKeys, defaultPad, weapons, upgrades, enemies, step, investigators, stages, playModes, relics, bestiary, bossTells, environmentWarnings, expeditionOaths, expeditionTime, harbourWeaponHints, signatures } from './content.mjs';
 import { archive, archiveCost, achievements, bonuses, buy, consequences, decisions, dispatches, endings, finalChoices, investigatorUnlocked, resolveStory, stageUnlocked } from './campaign.mjs';
 import { clamp } from './math.mjs';
 
@@ -26,7 +26,7 @@ const promptFor = action => padConnected ? padLabels[profile.settings.pad[action
 const nextChapter = () => stages.find(item => !profile.progress.clears.includes(item.id) && stageUnlocked(profile.progress,item.id)) ?? stages.at(-1);
 const storyLabel = () => !profile.progress.clears.length ? tr('Comenzar expedición','Begin expedition') :
   profile.progress.endings.length ? tr('Repetir capítulo final','Replay final chapter') : tr('Continuar historia','Continue story');
-const arenaArt = stage => stage ? 'assets/arena'+stage+'.png' : 'assets/quay.png';
+const arenaArt = stage => imageAsset(sceneFile(stage));
 const input = new Input();
 const sound = new Sound();
 const renderer = new Renderer(world);
@@ -82,7 +82,7 @@ function show(name) {
         btn('story-brief',storyLabel(),!pending&&!suspended)+
         btn('modes',tr('Modos alternativos','Other modes'))+btn('campaign',tr('Campaña','Campaign'))+
         btn('archive',tr('Archivo','Archive'))+btn('options',tr('Opciones','Settings'))+
-        '</div><p class="hero-footer">'+progress+' · v0.6.0</p></div></section>';
+        '</div><p class="hero-footer">'+progress+' · v0.7.0</p></div></section>';
       break;
     }
     case 'campaign':
@@ -295,8 +295,14 @@ function displayCodex() {
   const tabs={beasts:tr('Bestiario','Bestiary'),armory:tr('Armas','Weapons'),recipes:tr('Recetas','Recipes'),awards:tr('Logros','Achievements'),
     finales:tr('Finales','Endings'),records:tr('Récords','Records')};
   let body='';
-  if (codexTab==='beasts') body=[...bestiary,...stages.flatMap(item=>[item.main,item.optional])].map(id=>
-    '<li>'+loc(enemies[id].name)+' · '+(p.bestiary.includes(id)||p.bosses.includes(id)?tr('Registrado','Recorded'):tr('Por descubrir','Undiscovered'))+'</li>').join('');
+  if (codexTab==='beasts') body=[...bestiary,...stages.flatMap(item=>[item.main,item.optional])].map(id=>{
+    const {atlas,cell} = creaturePortrait(id);
+    const counted = p.bestiary.includes(id)||p.bosses.includes(id);
+    return '<li><span aria-hidden="true" class="beast-portrait '+atlas+(counted?'':' unknown')+'" style="--portrait-x:'+
+      (cell%4*100/3)+'%;--portrait-y:'+(Math.floor(cell/4)*50)+'%"></span><div><strong>'+loc(enemies[id].name)+
+      '</strong><small>'+(counted ? (atlas==='fauna'?loc(portraitNotes[cell]):tr('Registrado','Recorded')) :
+        tr('Por descubrir','Undiscovered'))+'</small></div></li>';
+  }).join('');
   if (codexTab==='recipes') body=Object.entries(weapons).filter(([,item])=>item.evolves).map(([id,item])=>'<li>'+
     loc(weapons[item.evolves].name)+' III + '+loc(upgrades[item.recipe].name)+' → '+loc(item.name)+
     (p.evolutionLog.includes(id)?' ✓':'')+'</li>').join('');
@@ -308,8 +314,10 @@ function displayCodex() {
     ' · '+(p.records[id]?.kills??0)+' '+tr('bajas','kills')+'</li>').join('')+
     Object.entries(expeditionOaths).map(([id,item])=>'<li>'+loc(item.name)+' · '+(p.oaths[id]?.length??0)+'/'+stages.length+
       ' '+tr('capítulos','chapters')+'</li>').join('');
+  const portraitAttrs = codexTab==='beasts' ? ' creatures" style="--fauna:url('+imageAsset(actorAtlases.fauna)+');--portraits:url('+
+    imageAsset(actorAtlases.portraits)+')' : '';
   overlay.innerHTML=panel(tr('Cuaderno de campo','Field journal'),tabs[codexTab],group(btn(codexFrom,tr('Volver','Back'),true))+
-    '<div class="selection">'+Object.entries(tabs).map(([id,name])=>pick('codex-tab',id,name,codexTab===id)).join('')+'</div><ul class="codex-list">'+body+'</ul>',true);
+    '<div class="selection">'+Object.entries(tabs).map(([id,name])=>pick('codex-tab',id,name,codexTab===id)).join('')+'</div><ul class="codex-list'+portraitAttrs+'">'+body+'</ul>',true);
 }
 function displayChronicle() {
   const p = profile.progress;

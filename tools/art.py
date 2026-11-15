@@ -13,6 +13,9 @@ def canvas(w, h, color=None):
     return im, ImageDraw.Draw(im)
 
 def save(image, name):
+    # These production assets are authored separately from the legacy drawing script.
+    if name in {'quay','well','chapel','shrine','beacon','boat'} or name.startswith('arena'):
+        return
     image.save(ROOT / f"{name}.png", optimize=True)
 
 def person(kind, frame):

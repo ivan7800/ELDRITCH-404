@@ -1,17 +1,35 @@
 const assert = require('node:assert/strict');
 const {createCanvas,loadImage} = require('@napi-rs/canvas');
 async function run() {
-  const {Renderer} = await import('../src/render.mjs');
+  const {Renderer,renderFiles} = await import('../src/render.mjs');
   const {Expedition} = await import('../src/simulation.mjs');
-  const {sites,stages,step,duration} = await import('../src/content.mjs');
+  const {atlasCell,stages,step,duration} = await import('../src/content.mjs');
   const {choose,plan} = await import('./pilot.mjs');
   const canvas=createCanvas(300,187);
   canvas.clientWidth=1280;
   canvas.clientHeight=800;
   const r=new Renderer(canvas);
-  for (const name of ['sprites','cast','quay',...stages.slice(1).map(stage=>'arena'+stage.id),...sites.map(site=>site.art)]) {
-    r.assets[name]=await loadImage('assets/'+name+'.png');
+  for (const [key,file] of Object.entries(renderFiles)) r.assets[key]=await loadImage('assets/'+file);
+  for (const stage of stages) {
+    const scene = r.assets['arena'+stage.id];
+    assert.equal(scene.width,864);
+    assert.equal(scene.height,576);
   }
+  const verifyAtlas = (image, columns, rows, width, height) => {
+    assert.equal(image.width,columns*width);
+    assert.equal(image.height,rows*height);
+    const sample = createCanvas(width,height).getContext('2d');
+    for (let i=0;i<columns*rows;i++) {
+      sample.clearRect(0,0,width,height);
+      sample.drawImage(image,(i%columns)*width,Math.floor(i/columns)*height,width,height,0,0,width,height);
+      const alpha = sample.getImageData(0,0,width,height).data;
+      assert.ok(alpha.some((value,j)=>j%4===3 && value>120),'empty cell '+i);
+      assert.equal(alpha[3],0,'opaque corner '+i);
+    }
+  };
+  verifyAtlas(r.assets.fauna,4,3,atlasCell,atlasCell);
+  verifyAtlas(r.assets.portraits,4,3,atlasCell,atlasCell);
+  verifyAtlas(r.assets.landmarks,3,3,112,108);
   const game=new Expedition({seed:404});
   let camera=r.draw(game,false);
   assert.equal(camera.width,598);

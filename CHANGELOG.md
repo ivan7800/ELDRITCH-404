@@ -1,5 +1,13 @@
 # Cambios
 
+## 0.7.0 · Faroles en la niebla
+
+- Diez fondos ilustrados con luz cálida, agua, bruma y materiales propios de cada capítulo. Innsmouth tiene reflejos, oleaje y estelas al cruzar la crecida.
+- Nuevas siluetas para el investigador inicial, los diez jefes principales y la fauna. Los profundos, shoggoths, mi-go, descarnados, Antiguos y sabuesos de Tíndalos tienen aspecto y movimiento diferenciados.
+- Seis objetos ilustrados y nueve construcciones locales, desde el órgano hasta el monolito. Cada capítulo tiene un hito central propio.
+- El bestiario muestra las 65 fichas con retratos y notas de las criaturas observadas. El nuevo arte se incluye en la aplicación instalable y en el HTML portátil.
+- La animación de la Sacristana en segunda fase queda anclada a su posición en el mapa.
+
 ## 0.6.0 · Los juramentos de la costa
 
 - Nueve escenarios redibujados, desde los túmulos del Cementerio hasta las grietas del Corazón del Caos.

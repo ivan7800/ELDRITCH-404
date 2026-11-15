@@ -142,3 +142,13 @@ kbd{font:700 .75rem var(--mono);display:inline-block;border:1px solid #607d72;pa
 }
 @media(prefers-reduced-motion:reduce){.hero-art::before,.hero-art::after{animation:none}}
 #app.reduced .hero-art::before,#app.reduced .hero-art::after{animation:none}
+
+.codex-list.creatures {grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+.creatures>li {display:flex;align-items:center;gap:10px;background:radial-gradient(ellipse at 0% 45%,#2a3539,#142128 75%);padding:6px 10px}
+.creatures strong,.creatures small {display:block}
+.creatures small {color:#adbfbd}
+.beast-portrait {width:62px;height:62px;flex:0 0 auto;background-image:var(--fauna);background-size:400% 300%;background-position:var(--portrait-x) var(--portrait-y);image-rendering:pixelated}
+.beast-portrait.portraits {background-image:var(--portraits)}
+.beast-portrait.unknown {filter:brightness(.25) saturate(.6);opacity:.82}
+.brief-overview img {image-rendering:auto;box-shadow:0 5px 15px #040b11ad;border-color:#716c56}
+@media(max-width:450px) {.codex-list.creatures{grid-template-columns:1fr}}

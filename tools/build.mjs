@@ -44,10 +44,9 @@ for (const name of sources) {
   const exports = [...code.matchAll(/^export (?:class|const|function) (\w+)/gm)].map(m=>m[1]);
   code = code.replace(/^import \{([^}]+)\} from '\.\/(\w+)\.mjs';$/gm,'const {$1} = modules.$2;');
   code = code.replace(/^export /gm,'');
-  if (name === 'render') code = code.replace("'assets/' + name + '.png'","art[name + '.png']");
+  if (name === 'content') code = code.replace("'assets/' + name","art[name]");
   if (name === 'app') {
     code = code.replaceAll('assets/icon.png',uris['icon.png']);
-    code = code.replace("'assets/arena'+stage+'.png' : 'assets/quay.png'", "art['arena'+stage+'.png'] : art['quay.png']");
   }
   moduleCode.push('modules.'+name+' = (() => {\n'+code+'\nreturn {'+exports.join(',')+'};\n})();');
 }
@@ -56,6 +55,6 @@ const html = (await readFile('index.html','utf8'))
   .replace(/^<link rel="manifest".*\n/m,'')
   .replace('./assets/icon.png',uris['icon.png'])
   .replace('<link rel="stylesheet" href="./style.css">','<style>'+css+'</style>')
-  .replace('<script type="module" src="./src/app.mjs"></script>','<script>\n"use strict";\nconst modules = {};\nconst art = '+JSON.stringify(Object.fromEntries(Object.entries(uris).filter(([name])=>name.endsWith('.png') && name!=='title.png')))+';\n'+moduleCode.join('\n')+'\n</script>');
+  .replace('<script type="module" src="./src/app.mjs"></script>','<script>\n"use strict";\nconst modules = {};\nconst art = '+JSON.stringify(Object.fromEntries(Object.entries(uris).filter(([name])=>!['title.png','title-cinematic.webp'].includes(name))))+';\n'+moduleCode.join('\n')+'\n</script>');
 await writeFile('ELDRITCH-404.html',html);
 console.log('Web build: dist/ · Portable: ELDRITCH-404.html');

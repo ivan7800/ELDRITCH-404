@@ -10,7 +10,7 @@ test('HTML portátil con código válido y arte incorporado', async () => {
   assert.ok(new Script(script));
   assert.ok(!/<(?:script|link) [^>]*(?:src|href)="\.\//.test(html));
   assert.ok(html.includes('data:image/png;base64,'));
-  assert.ok(script.includes("art[name + '.png']"));
+  assert.ok(script.includes("art[name]"));
 });
 test('el HTML autónomo inicia, muestra mapas, guarda y restaura desde su interfaz',async()=>{
   const html=await readFile('ELDRITCH-404.html','utf8');
@@ -31,7 +31,7 @@ test('el HTML autónomo inicia, muestra mapas, guarda y restaura desde su interf
     localStorage:{getItem:id=>store.get(id)??null,setItem:(id,value)=>store.set(id,value),removeItem:id=>store.delete(id)},
     requestAnimationFrame(){}, addEventListener(){}, matchMedia:()=>({matches:false}), console, structuredClone, URLSearchParams,
     setTimeout(){},clearTimeout(){},
-    Image:class { decode(){ assert.ok(this.src.startsWith('data:image/png;base64,')); return Promise.resolve(); } }
+    Image:class { decode(){ assert.ok(/^data:image\/(?:png|webp);base64,/.test(this.src)); return Promise.resolve(); } }
   };
   browser.window=browser;
   script.runInNewContext(browser);
@@ -45,7 +45,7 @@ test('el HTML autónomo inicia, muestra mapas, guarda y restaura desde su interf
   await click('story-brief');
   assert.match(menu(),/Resiste hasta que llegue el jefe/);
   assert.match(menu(),/05:00/);
-  assert.match(menu(),/<img src="data:image\/png;base64,/);
+  assert.match(menu(),/<img src="data:image\/(?:png|webp);base64,/);
   assert.doesNotMatch(menu(),/Cementerio de los Sin Nombre/);
   await click('toggle-loadout');
   assert.match(menu(),/Cementerio de los Sin Nombre/);

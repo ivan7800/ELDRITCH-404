@@ -1,7 +1,16 @@
-import { arena, enemies, lanternColors, quayLights, signatures, sites } from './content.mjs';
+import { actorAtlases, arena, atlasCell, creaturePortrait, enemies, faunaMotion, imageAsset, lanternColors, quayLights, quayMoorings, sceneFile, signatures, stages, sites } from './content.mjs';
 import { clamp } from './math.mjs';
 const rows = ['player','drowned','skitter','brute','seer','charger','shade','boss'];
 const TAU = Math.PI * 2;
+export const renderFiles = {
+  sprites:'sprites.png',cast:'cast.png',mooring:'mooring.png',landmarks:'landmarks.png',...actorAtlases,
+  ...Object.fromEntries(stages.map(stage=>['arena'+stage.id,sceneFile(stage.id)])),
+  ...Object.fromEntries(sites.map(site=>[site.art,site.art+'.png']))
+};
+const gait = {
+  stride:[8,.65,.025],scuttle:[13,.55,.065],crawl:[4,.3,.09],pounce:[7,1.9,.06],
+  hover:[3.2,3,.035],flutter:[10,1.7,.09],boss:[3.1,2,.035]
+};
 export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
@@ -9,12 +18,12 @@ export class Renderer {
     this.assets = {};
   }
   async load() {
-    for (const name of ['sprites','quay','cast',...Array.from({length:9},(_,i)=>'arena'+(i+1)), ...sites.map(x => x.art)]) {
+    await Promise.all(Object.entries(renderFiles).map(async ([key,file])=>{
       const img = new Image();
-      img.src = 'assets/' + name + '.png';
-      this.assets[name] = img;
-    }
-    await Promise.all(Object.values(this.assets).map(img => img.decode()));
+      img.src = imageAsset(file);
+      await img.decode();
+      this.assets[key] = img;
+    }));
   }
   camera(p) {
     const height = 374;
@@ -34,7 +43,7 @@ export class Renderer {
     const cx = Math.round(cam.x/2);
     const cy = Math.round(cam.y/2);
     c.imageSmoothingEnabled = false;
-    const backdrop = this.assets['arena'+game.stage.id] ?? this.assets.quay;
+    const backdrop = this.assets['arena'+game.stage.id];
     c.drawImage(backdrop, cx, cy, w, h, 0, 0, w, h);
     c.save();
     c.translate(-cx, -cy);
@@ -53,17 +62,28 @@ export class Renderer {
       c.beginPath(); c.moveTo(x,y-4); c.lineTo(x+3,y-1); c.lineTo(x,y+3); c.lineTo(x-3,y); c.closePath(); c.fill();
       c.fillStyle = '#e7fedd'; c.fillRect(x-1,y-2,1,2);
     }
+    const scenery = game.stage.id===0 ? quayMoorings.map(site=>({...site,site:true,used:true})) : [];
     const subjects = [
-      ...game.stage.sites.map(site => ({ ...site, site: true, used: !game.siteAvailable(site) })),
+      ...scenery, ...game.stage.sites.map(site => ({ ...site, site: true, used: !game.siteAvailable(site) })),
       ...game.enemies, { ...game.player, kind: 'player' }
     ].filter(e => this.visible(e,cam,e.site ? 150 : 85)).sort((a,b) => a.y-b.y);
     for (const e of subjects) {
       if (e.site) {
         const x = Math.round(e.x/2);
         const y = Math.round(e.y/2);
-        if (!reduced) this.glow(c,x,y-24,43,e.art==='shrine'?'#be6989':game.stage.color,e.used?.08:.22);
+        if (!reduced && !contrast) {
+          const warm = ['well','chapel','beacon','mooring'].includes(e.art);
+          const decay = warm && game.boss?.kind==='boss' && game.boss.second ?
+            1-clamp((game.time-(game.boss.phaseAt ?? -1))/1.3,0,1) : 1;
+          this.glow(c,x,y+1,warm?66:47,warm?'#ffc483':'#af92c4',(e.used?.16:.38)*decay);
+        }
         if (e.ritual && !e.used) this.ring(c,x,y,25,'#dabb89',contrast?.9:.64);
-        c.drawImage(this.assets[e.art],x-56,y-83);
+        if (e.art==='well' && game.stage.id>0) {
+          const cell = game.stage.id-1;
+          c.drawImage(this.assets.landmarks,cell%3*112,Math.floor(cell/3)*108,112,108,x-56,y-83,112,108);
+        } else {
+          c.drawImage(this.assets[e.art],x-56,y-83);
+        }
         if(e.ritual==='signal'&&!e.used) {
           c.fillStyle='#e1bb88'; c.fillRect(x-5,y-31,10,7);
           c.fillStyle='#1a2c33'; c.fillRect(x-3,y-29,6,1);
@@ -127,6 +147,17 @@ export class Renderer {
       if (this.visible(effect,cam,2*effect.radius+40)) this.drawEffect(c,effect,game.time,reduced,true);
     }
     const player = game.player;
+    if (game.stage.id===0 && !reduced && player.walk) {
+      const x = player.x/2, y = player.y/2;
+      const rise = clamp((game.time/game.duration-.19)/.42,0,1);
+      if (y>397-rise*56 && (x<349 || x>516)) {
+        const wake = game.time*3.5%1;
+        c.strokeStyle='#98c8c1';
+        c.globalAlpha=.63*(1-wake);
+        c.beginPath(); c.ellipse(x,y,5+wake*13,2+wake*5,0,0,TAU); c.stroke();
+        c.globalAlpha=1;
+      }
+    }
     if (!reduced) {
       for (let i=0;i<24;i++) {
         const x = ((i*161 + game.time*(i%3+3)) % 890);
@@ -165,10 +196,9 @@ export class Renderer {
       if (!this.visible({x:x*2,y:y*2},cam,145)) continue;
       const since = time-(game.boss?.phaseAt ?? -3);
       const light = blackout ? 1-clamp((since-i*.21)/.75,0,1) : 1;
-      this.glow(c,x,y,62,color,light*(.35+Math.sin(time*1.22+i)*.045));
+      this.glow(c,x,y,62,color,light*(.33+Math.sin(time*1.22+i)*.035));
       if (stage===0) {
-        c.fillStyle = light>.2 ? '#edab6c' : '#111e28';
-        c.fillRect(x-2,y-20,5,4);
+        if (light<1) this.glow(c,x,y,61,'#0b1623',.86*(1-light));
         c.fillStyle = '#e9b680';
         c.globalAlpha = light*(.32+risen*.22);
         for (let strip=0;strip<5;strip++) {
@@ -206,11 +236,11 @@ export class Renderer {
     const height = this.canvas.height;
     const width = this.canvas.width;
     if (y0+height<350) return;
-    const surface = 420-rise*65;
+    const surface = 389-rise*56;
     const crest = x=>Math.round(surface+Math.sin(x*.018)*12+Math.sin(x*.048)*(reduced?0:3));
     c.save();
     c.beginPath();
-    for (const [left,right] of [[0,407],[471,864]]) {
+    for (const [left,right] of [[0,349],[516,864]]) {
       const a = Math.max(left,x0), b = Math.min(right,x0+width);
       if (b<=a) continue;
       c.moveTo(a,crest(a));
@@ -295,16 +325,22 @@ export class Renderer {
       }
     }
     if (hero || boss) {
-      this.glow(c,x,y-7,hero ? 45 : 65,hero ? '#65d7b2' : '#c175a1',hero ? .23 : .25);
+      this.glow(c,x,y-7,hero ? 45 : 65,hero ? '#f2c27f' : '#c175a1',hero ? .23 : .25);
       this.ring(c,x,y,hero ? 9 : 25,hero ? '#89c7ab' : '#bb768a',.65);
     }
     c.fillStyle = '#0810179f';
     c.beginPath(); c.ellipse(x,y,radius,Math.max(2,radius*.31),0,0,TAU); c.fill();
     const frame = hero && !e.walk ? 0 : Math.floor(game.time*(boss?(e.second?11:7):9) + (e.id ?? 0)%4) % 4;
-    const size = hero ? 48 : boss ? (e.kind==='boss' && e.second ? 71 : 59) : e.kind === 'brute' ? 44 : 37;
+    const portrait = hero ? {atlas:'portraits',cell:0} : creaturePortrait(e.kind);
+    const atlas = hero && game.character.id>0 ? null : this.assets[portrait.atlas];
+    const size = hero ? (atlas?40:48) : boss ? (e.second ? 78 : 68) :
+      portrait.cell===2 ? 46 : portrait.cell===1 ? 28 : 36;
+    const [rate,bounce,stretch] = gait[boss?'boss':hero?'stride':faunaMotion[portrait.cell]];
+    const motion = reduced || (hero&&!e.walk) ? 0 : Math.sin(game.time*rate+(e.id??0)*1.91);
     c.save();
     const arrival = clamp((game.time-(e.spawnedAt ?? -1))/.65,0,1);
     if (e.kind==='boss' && e.second && !reduced) {
+      c.translate(x,y);
       c.strokeStyle = '#c89aa9';
       c.globalAlpha = .48;
       for (let i=0;i<5;i++) {
@@ -312,16 +348,22 @@ export class Renderer {
         c.beginPath(); c.moveTo(0,-16); c.quadraticCurveTo((i-2)*13,-26+bend,(i-2)*18,5+bend); c.stroke();
       }
       c.globalAlpha = 1;
+      c.translate(-x,-y);
     }
     const entrance = boss && !reduced ? (1-arrival)*16 : 0;
-    c.translate(x,y+2-entrance+(boss&&!reduced?Math.sin(game.time*2.8+(e.id??0))*(e.second?3:2):0));
-    c.scale((hero ? e.dx : e.facing) < 0 ? -1 : 1,1);
+    c.translate(x,Math.round(y+3-entrance+motion*bounce));
+    c.scale(((hero ? e.dx : e.facing) < 0 ? -1 : 1)*(1+motion*stretch),1-motion*stretch*.65);
     c.globalAlpha = e.kind === 'shade' ? .78 : boss&&!reduced ? .72+arrival*.28 : 1;
     if (!reduced && (e.flash || (hero && e.hurt))) c.filter = hero ? 'brightness(1.3) saturate(0.4)' : 'brightness(1.65)';
     const castRow = hero?game.character.id : boss&&e.kind!=='boss' ? e.kind.startsWith('champion')?12+def.stage:21+def.stage : -1;
     const original = castRow<=0 || !this.assets.cast;
     const row = original ? rows.indexOf(boss?'boss':def?.sprite??e.kind) : castRow;
-    c.drawImage(original?this.assets.sprites:this.assets.cast,frame*64,row*68,64,68,-Math.round(size/2),-size,size,size);
+    if (atlas) {
+      c.drawImage(atlas,portrait.cell%4*atlasCell,Math.floor(portrait.cell/4)*atlasCell,
+        atlasCell,atlasCell,-Math.round(size/2),-size,size,size);
+    } else {
+      c.drawImage(original?this.assets.sprites:this.assets.cast,frame*64,row*68,64,68,-Math.round(size/2),-size,size,size);
+    }
     c.restore();
     if (boss && e.action!=='tell' && !reduced && arrival<1)
       this.bossShape(c,x,y,def.pattern,0,27+arrival*12,'#b9eedb',.78*(1-arrival));
@@ -341,8 +383,8 @@ export class Renderer {
     }
     if (hero && game.mutation) { c.fillStyle='#e5a4d5'; c.fillRect(x-4,y-16,2,2); c.fillRect(x+2,y-16,2,2); }
     if (!hero && !boss && e.hp < e.maxHp && e.maxHp > 35) {
-      c.fillStyle = '#10171e'; c.fillRect(x-6,y-24,12,2);
-      c.fillStyle = enemies[e.kind].color; c.fillRect(x-6,y-24,Math.ceil(12*e.hp/e.maxHp),1);
+      c.fillStyle = '#10171e'; c.fillRect(x-6,y-size+1,12,2);
+      c.fillStyle = enemies[e.kind].color; c.fillRect(x-6,y-size+1,Math.ceil(12*e.hp/e.maxHp),1);
     }
   }
   bossShape(c,x,y,pattern,aim,r,color,alpha) {

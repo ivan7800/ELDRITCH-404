@@ -1,3 +1,24 @@
+export function imageAsset(name) { return 'assets/' + name; }
+export function sceneFile(stage) { return 'scene-'+stage+'.webp'; }
+export const atlasCell = 80;
+export const actorAtlases = {fauna:'fauna.png',portraits:'portraits.png'};
+export const faunaMotion = [
+  'stride','scuttle','crawl','stride','pounce','hover','flutter','hover','stride','stride','pounce','hover'
+];
+export const portraitNotes = [
+  ['Las branquias siguen moviéndose lejos del agua.', 'Its gills keep moving far from water.'],
+  ['Las patas finas apenas tocan los charcos.', 'Its slender legs barely touch the puddles.'],
+  ['Los ojos emergen y se hunden en la misma masa.', 'Eyes rise and sink into the same mass.'],
+  ['El gancho del báculo está pulido por dentro.', 'The inside of its staff hook is worn smooth.'],
+  ['La espina se tensa justo antes del salto.', 'Its spine tenses just before it springs.'],
+  ['Las alas se cierran sobre el lugar donde tendría la cara.', 'Its wings fold over the place where its face should be.'],
+  ['Las alas parecen hongos secos hasta que vibran.', 'Its wings look like dried fungi until they vibrate.'],
+  ['Los tentáculos se abren al reconocer una luz.', 'Its tentacles spread when they sense a light.'],
+  ['La cabeza estrellada gira con independencia del cuerpo.', 'Its star-shaped head turns independently of its body.'],
+  ['Las astas conservan astillas de árboles distintos.', 'Its antlers hold splinters from several different trees.'],
+  ['Las patas se pliegan en ángulos que un animal no soportaría.', 'Its legs fold at angles an animal could not bear.'],
+  ['El color persiste un instante después de apartar la vista.', 'The colour lingers for an instant after you look away.']
+];
 export const arena = { width: 1728, height: 1152 };
 export const duration = 300;
 export const step = 1 / 60;
@@ -26,16 +47,17 @@ export const upgrades = {
   patch: { name: ['Venda de campaña', 'Field Dressing'], desc: ['Recupera 32 de salud al instante.', 'Restore 32 health immediately.'], color: '#efb6ab', glyph: 'patch', max: Infinity }
 };
 export const enemies = {
-  drowned: { hp: 21, speed: 48, radius: 8, contact: 12, xp: 2, color: '#63b4a6', name: ['Ahogado', 'Drowned'] },
+  drowned: { hp: 21, speed: 48, radius: 8, contact: 12, xp: 2, color: '#63b4a6', name: ['Profundo de Innsmouth', 'Innsmouth Deep One'] },
   skitter: { hp: 14, speed: 88, radius: 8, contact: 10, xp: 2, color: '#ef9c72', name: ['Larva de marea', 'Tide Larva'] },
-  brute: { hp: 88, speed: 36, radius: 13, contact: 22, xp: 6, color: '#a5c0a0', name: ['Estibador cosido', 'Stitched Dockhand'] },
+  brute: { hp: 88, speed: 36, radius: 13, contact: 22, xp: 6, color: '#a5c0a0', name: ['Shoggoth de lastre', 'Ballast Shoggoth'] },
   seer: { hp: 35, speed: 61, radius: 9, contact: 10, xp: 4, color: '#bc9dea', name: ['Oficiante', 'Officiant'] },
   charger: { hp: 53, speed: 55, radius: 10, contact: 20, xp: 5, color: '#f6787d', name: ['Perro de osario', 'Ossuary Hound'] },
-  shade: { hp: 46, speed: 76, radius: 10, contact: 16, xp: 5, color: '#a0adec', name: ['Sombra del faro', 'Lighthouse Shade'] },
+  shade: { hp: 46, speed: 76, radius: 10, contact: 16, xp: 5, color: '#a0adec', name: ['Descarnado de la noche', 'Nightgaunt'] },
   boss: { hp: 3500, speed: 40, radius: 29, contact: 26, xp: 0, color: '#f18693', name: ['La Sacristana de la Marea', 'The Tide Sacristan'] }
 };
 // Lanterns and waterline use the half-resolution coordinates of the quay artwork.
-export const quayLights = [[317,306],[379,348],[474,344],[535,306],[244,238],[621,269],[165,365],[703,350]];
+export const quayLights = [[115,252],[150,196],[241,66],[388,35],[486,45],[728,99],[752,162],[738,325],[139,333]];
+export const quayMoorings = [{x:709,y:825,art:'mooring'},{x:1019,y:825,art:'mooring'},{x:709,y:1017,art:'mooring'}];
 export const lanternColors = ['#ffc47d','#c4d18c','#fa9676','#78cddc','#d29af4','#bdc98b','#b1b6f9','#e4aa74','#f1c68c','#e2a8ed'];
 export const sites = [
   { x: 864, y: 576, art: 'well', label: ['Plaza del aljibe', 'Cistern Square'] },
@@ -186,27 +208,41 @@ for (const stage of stages) {
 enemies.boss.boss = true;
 enemies.boss.pattern = 'tide';
 
+const familyPortraits = [[0,8,2],[6,5,1],[4,0,10,9],[6,7,1,3],[8,2,3,7,10],
+  [1,2,8,0,9],[10,5,11,0,6],[3,8,4,2,9],[11,10,7,11,5]];
+const rivalPortraits = [3,8,3,7,11,9,10,2,8,7];
 const enemyFamilies = [
   ['drowned','tether', ['Marinero con garfio','Hooked Sailor'], ['Caparazón de cal','Lime Shell'], ['Amasijo','Heap']],
-  ['skitter','flank', ['Parásito lateral','Flank Parasite'], ['Polilla del umbral','Threshold Moth'], ['Cangrejo inverso','Reverse Crab']],
+  ['skitter','flank', ['Mi-Go explorador','Mi-Go Scout'], ['Descarnado del umbral','Threshold Nightgaunt'], ['Cangrejo inverso','Reverse Crab']],
   ['charger','lunge', ['Ciego del foso','Pit Blind'], ['Buzo de impulso','Burst Diver'], ['Lancero del barro','Mud Lancer'], ['Ciervo de cal viva','Quicklime Stag']],
-  ['seer','artillery', ['Vigía del haz','Beam Watcher'], ['Ballestero coralino','Coral Arbalest'], ['Caracol de minas','Mine Snail'], ['Corista mudo','Silent Chorister']],
-  ['brute','support', ['Camillero','Orderly'], ['Portaescudos','Shield Bearer'], ['Monaguillo','Acolyte'], ['Guardián del umbral','Threshold Guard'], ['Notario','Notary']],
-  ['drowned','brood', ['Alevín de fosa','Pit Fry'], ['Saco ocre','Ochre Sac'], ['Madre del limo','Silt Mother'], ['Gusano de marea','Tide Worm'], ['Raíz ambulante','Walking Root']],
-  ['shade','ambush', ['Cepo andante','Walking Trap'], ['Estatua del aire','Air Statue'], ['Espectro de cal','Lime Wraith'], ['Pescador de poza','Pool Fisher'], ['Eco de paso','Footstep Echo']],
+  ['seer','artillery', ['Mi-Go del haz','Beacon Mi-Go'], ['Ballestero coralino','Coral Arbalest'], ['Caracol de minas','Mine Snail'], ['Corista mudo','Silent Chorister']],
+  ['brute','support', ['Antiguo del pabellón','Ward Elder Thing'], ['Portaescudos','Shield Bearer'], ['Monaguillo','Acolyte'], ['Guardián del umbral','Threshold Guard'], ['Notario','Notary']],
+  ['drowned','brood', ['Alevín de fosa','Pit Fry'], ['Shoggoth ocre','Ochre Shoggoth'], ['Madre del limo','Silt Mother'], ['Gusano de marea','Tide Worm'], ['Raíz ambulante','Walking Root']],
+  ['shade','ambush', ['Sabueso de Tíndalos','Hound of Tindalos'], ['Estatua del aire','Air Statue'], ['Espectro de cal','Lime Wraith'], ['Pescador de poza','Pool Fisher'], ['Eco de paso','Footstep Echo']],
   ['brute','territory', ['Farero de sebo','Tallow Keeper'], ['Rotonda de costillas','Rib Rotunda'], ['Perro de cerco','Ring Hound'], ['Estante errante','Wandering Shelf'], ['Yunque flotante','Floating Anvil']],
-  ['shade','astral', ['Tiempo muerto','Dead Time'], ['Imán del reverso','Reverse Magnet'], ['Pliegue hambriento','Hungry Fold'], ['Órbita ciega','Blind Orbit'], ['Doble reflejado','Mirrored Double']]
+  ['shade','astral', ['Color del espacio exterior','Colour Out of Space'], ['Imán del reverso','Reverse Magnet'], ['Engendro estelar','Star Spawn'], ['Órbita ciega','Blind Orbit'], ['Doble reflejado','Mirrored Double']]
 ];
 export const bestiary = Object.keys(enemies).filter(id=>!enemies[id].boss);
 enemyFamilies.forEach(([sprite, behavior, ...names], family) => {
   names.forEach((name, style) => {
     const id = 'creature'+family+'_'+style;
     const base = enemies[sprite];
-    enemies[id] = { ...base, name, sprite, behavior, style, color: stages[family+1].color,
+    enemies[id] = { ...base, name, sprite, behavior, style, portrait:familyPortraits[family][style], color: stages[family+1].color,
       hp: Math.round(base.hp*(1.12+style*.12)), speed: base.speed*(.91+style*.07), xp: base.xp+1 };
     bestiary.push(id);
   });
 });
+const basePortraits = {drowned:0,skitter:1,brute:2,seer:3,charger:4,shade:5};
+export function creaturePortrait(kind) {
+  if (kind==='boss') return {atlas:'portraits',cell:1};
+  const data = enemies[kind];
+  if (data?.boss) {
+    if (kind===stages[data.stage].main) return {atlas:'portraits',cell:data.stage+1};
+    if (kind==='champion2') return {atlas:'portraits',cell:11};
+    return {atlas:'fauna',cell:rivalPortraits[data.stage]};
+  }
+  return {atlas:'fauna',cell:data?.portrait ?? basePortraits[kind] ?? 0};
+}
 export function stageWaves(stage) {
   if (!stage.id) return waves;
   const faction = bestiary.filter(id=>id.startsWith('creature'+(stage.id-1)+'_'));
